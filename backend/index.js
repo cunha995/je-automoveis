@@ -227,7 +227,10 @@ function sendWithSendGrid({ to, from, subject, text }) {
 }
 
 app.get('/api/vehicles', (_req, res) => {
-  const vehicles = readVehicles();
+  const vehicles = readVehicles().map((vehicle) => ({
+    ...vehicle,
+    sold: vehicle.sold === true || /vendid/i.test(String(vehicle.status || '')),
+  }));
   res.json({ ok: true, vehicles });
 });
 
@@ -268,7 +271,10 @@ app.post('/api/admin/logout', requireAdmin, (req, res) => {
 });
 
 app.get('/api/admin/vehicles', requireAdmin, (_req, res) => {
-  const vehicles = readVehicles();
+  const vehicles = readVehicles().map((vehicle) => ({
+    ...vehicle,
+    sold: vehicle.sold === true || /vendid/i.test(String(vehicle.status || '')),
+  }));
   return res.json({ ok: true, vehicles });
 });
 
@@ -283,7 +289,7 @@ app.get('/api/admin/banners', requireAdmin, (_req, res) => {
 });
 
 app.post('/api/admin/vehicles', requireAdmin, upload.single('photo'), async (req, res) => {
-  const { model, year, km, fuel, price, status, transmission } = req.body || {};
+  const { model, year, km, fuel, price, status, transmission, sold } = req.body || {};
   if (!model || !year || !price) {
     return res.status(400).json({ error: 'Campos obrigatórios: model, year, price' });
   }
@@ -296,6 +302,8 @@ app.post('/api/admin/vehicles', requireAdmin, upload.single('photo'), async (req
     return res.status(500).json({ error: 'Falha ao salvar imagem do veículo' });
   }
 
+  const isSold = String(sold || 'false') === 'true';
+
   const vehicle = {
     id: crypto.randomUUID(),
     model: String(model).trim(),
@@ -304,7 +312,8 @@ app.post('/api/admin/vehicles', requireAdmin, upload.single('photo'), async (req
     fuel: String(fuel || '').trim() || 'Flex',
     transmission: String(transmission || '').trim() || 'Manual',
     price: Number(price),
-    status: String(status || 'Disponível').trim(),
+    status: isSold ? 'Vendido' : (String(status || 'Disponível').trim() || 'Disponível'),
+    sold: isSold,
     image: imageData ? imageData.image : '',
     imageStorage: imageData ? imageData.imageStorage : 'none',
     imagePublicId: imageData ? imageData.imagePublicId : null,
@@ -324,7 +333,12 @@ app.put('/api/admin/vehicles/:id', requireAdmin, upload.single('photo'), async (
   if (index < 0) return res.status(404).json({ error: 'Veículo não encontrado' });
 
   const current = vehicles[index];
-  const { model, year, km, fuel, price, status, transmission } = req.body || {};
+  const { model, year, km, fuel, price, status, transmission, sold } = req.body || {};
+
+  const incomingSold = sold !== undefined ? String(sold) === 'true' : undefined;
+  const soldValue = incomingSold !== undefined
+    ? incomingSold
+    : (current.sold === true || /vendid/i.test(String(current.status || '')));
 
   const updated = {
     ...current,
@@ -334,7 +348,10 @@ app.put('/api/admin/vehicles/:id', requireAdmin, upload.single('photo'), async (
     fuel: fuel !== undefined ? String(fuel).trim() : current.fuel,
     transmission: transmission !== undefined ? String(transmission).trim() : current.transmission,
     price: price !== undefined ? Number(price) : current.price,
-    status: status !== undefined ? String(status).trim() : current.status,
+    status: soldValue
+      ? 'Vendido'
+      : (status !== undefined ? String(status).trim() : (current.status || 'Disponível')),
+    sold: soldValue,
     updatedAt: new Date().toISOString(),
   };
 

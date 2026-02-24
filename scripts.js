@@ -112,17 +112,21 @@ function renderVehicles(vehicles) {
   }
 
   grid.innerHTML = vehicles.map((vehicle) => {
+    const isSold = vehicle.sold === true || /vendid/i.test(String(vehicle.status || ''));
     const message = encodeURIComponent(`Olá! Tenho interesse no veículo ${vehicle.model} ${vehicle.year}.`);
     const whatsappLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
     const fallback = createFallbackImage(`${vehicle.model} ${vehicle.year}`);
 
     return `
       <article class="vehicle-card">
-        <img src="${toAbsoluteImage(vehicle.image, `${vehicle.model} ${vehicle.year}`)}" alt="${vehicle.model}" class="vehicle-photo" onerror="this.onerror=null;this.src='${fallback}'">
+        <div class="vehicle-photo-wrap">
+          <img src="${toAbsoluteImage(vehicle.image, `${vehicle.model} ${vehicle.year}`)}" alt="${vehicle.model}" class="vehicle-photo" onerror="this.onerror=null;this.src='${fallback}'">
+          ${isSold ? '<span class="sold-stamp">VENDIDO</span>' : ''}
+        </div>
         <div class="vehicle-body">
           <div class="vehicle-top">
             <h3 class="vehicle-title">${vehicle.model}</h3>
-            <span class="badge">${vehicle.status}</span>
+            <span class="badge">${isSold ? 'Vendido' : vehicle.status}</span>
           </div>
           <div class="vehicle-meta">
             <span><strong>Ano:</strong> ${vehicle.year}</span>

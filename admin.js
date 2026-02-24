@@ -103,11 +103,14 @@ async function loadVehicles() {
 
   adminVehicleList.innerHTML = vehicles.map((vehicle) => `
     <article class="admin-item">
-      <img src="${toAbsoluteImage(vehicle.image)}" alt="${vehicle.model}">
+      <div class="admin-photo-wrap">
+        <img src="${toAbsoluteImage(vehicle.image)}" alt="${vehicle.model}">
+        ${vehicle.sold ? '<span class="sold-stamp">VENDIDO</span>' : ''}
+      </div>
       <div>
         <h3>${vehicle.model} (${vehicle.year})</h3>
         <p>${vehicle.km || 'Sem KM informado'} · ${vehicle.fuel || 'Combustível não informado'} · ${vehicle.transmission || 'Manual'}</p>
-        <p><strong>${formatPrice(vehicle.price)}</strong> · ${vehicle.status || 'Disponível'}</p>
+        <p><strong>${formatPrice(vehicle.price)}</strong> · ${vehicle.sold ? 'Vendido' : (vehicle.status || 'Disponível')}</p>
       </div>
       <div class="admin-item-actions">
         <button class="btn-edit" data-edit-vehicle="${vehicle.id}">Editar</button>
@@ -127,6 +130,7 @@ async function loadVehicles() {
       vehicleForm.elements.fuel.value = current.fuel || '';
       vehicleForm.elements.transmission.value = current.transmission || '';
       vehicleForm.elements.status.value = current.status || '';
+      vehicleForm.elements.sold.value = current.sold ? 'true' : 'false';
       vehicleForm.elements.price.value = current.price || '';
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
