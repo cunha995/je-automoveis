@@ -38,8 +38,27 @@
       <p id="loginMessage" class="admin-message"></p>
     </section>
 
-    <section id="panelSection" class="admin-stack hidden">
-      <section class="admin-card">
+    <section id="panelSection" class="admin-layout hidden">
+      <aside class="admin-sidebar admin-card">
+        <h3>Atalhos</h3>
+        <nav class="admin-side-nav">
+          <a href="#sec-veiculos">Veículos</a>
+          <a href="#sec-vendedores">Vendedores</a>
+          <a href="#sec-banners">Banners/Ofertas</a>
+          <a href="#sec-config">Sobre e Contato</a>
+          <hr>
+          <a href="#vehicle-model">Campo: Modelo</a>
+          <a href="#vehicle-price">Campo: Preço</a>
+          <a href="#seller-name">Campo: Nome vendedor</a>
+          <a href="#banner-title">Campo: Título banner</a>
+          <a href="#store-phone">Campo: Telefone loja</a>
+          <a href="#store-address">Campo: Endereço loja</a>
+          <a href="#store-email">Campo: Email loja</a>
+        </nav>
+      </aside>
+
+      <div class="admin-stack">
+      <section id="sec-veiculos" class="admin-card">
         <div class="admin-head">
           <h2>Cadastro de veículos</h2>
           <button id="logoutBtn" class="btn-secondary" type="button">Sair</button>
@@ -48,7 +67,7 @@
         <form id="vehicleForm" class="admin-form grid-2" enctype="multipart/form-data">
           <input type="hidden" name="id">
           <label>Modelo
-            <input type="text" name="model" required placeholder="Ex.: Fiat Argo Drive">
+            <input id="vehicle-model" type="text" name="model" required placeholder="Ex.: Fiat Argo Drive">
           </label>
           <label>Ano
             <input type="number" name="year" required min="1990" max="2100">
@@ -72,7 +91,7 @@
             </select>
           </label>
           <label>Preço (R$)
-            <input type="number" name="price" required min="1" step="1" placeholder="68900">
+            <input id="vehicle-price" type="number" name="price" required min="1" step="1" placeholder="68900">
           </label>
           <label>Foto do veículo
             <input type="file" name="photo" accept="image/*">
@@ -87,14 +106,14 @@
         <div id="adminVehicleList" class="admin-list"></div>
       </section>
 
-      <section class="admin-card">
+      <section id="sec-vendedores" class="admin-card">
         <div class="admin-head">
           <h2>Cadastro de vendedores</h2>
         </div>
         <form id="sellerForm" class="admin-form grid-2" enctype="multipart/form-data">
           <input type="hidden" name="id">
           <label>Nome
-            <input type="text" name="name" required placeholder="Ex.: Carlos Mendes">
+            <input id="seller-name" type="text" name="name" required placeholder="Ex.: Carlos Mendes">
           </label>
           <label>Cargo
             <input type="text" name="role" placeholder="Ex.: Consultor de vendas">
@@ -124,14 +143,14 @@
         <div id="adminSellerList" class="admin-list"></div>
       </section>
 
-      <section class="admin-card">
+      <section id="sec-banners" class="admin-card">
         <div class="admin-head">
           <h2>Banners / Ofertas (topo do site)</h2>
         </div>
         <form id="bannerForm" class="admin-form grid-2" enctype="multipart/form-data">
           <input type="hidden" name="id">
           <label>Título do banner
-            <input type="text" name="title" required placeholder="Ex.: Feirão de seminovos">
+            <input id="banner-title" type="text" name="title" required placeholder="Ex.: Feirão de seminovos">
           </label>
           <label>Subtítulo
             <input type="text" name="subtitle" placeholder="Ex.: Condições especiais nesta semana">
@@ -164,7 +183,7 @@
         <div id="adminBannerList" class="admin-list"></div>
       </section>
 
-      <section class="admin-card">
+      <section id="sec-config" class="admin-card">
         <div class="admin-head">
           <h2>Sobre nós e contato da loja</h2>
         </div>
@@ -174,7 +193,7 @@
             <input type="text" name="aboutTitle" placeholder="Ex.: Sobre a JE Automóveis">
           </label>
           <label>Telefone da loja
-            <input type="text" name="storePhone" placeholder="Ex.: (41) 99999-9999">
+            <input id="store-phone" type="text" name="storePhone" placeholder="Ex.: (41) 99999-9999">
           </label>
           <label class="full">Sobre nós — texto
             <input type="text" name="aboutText" placeholder="Texto de apresentação da loja">
@@ -183,10 +202,10 @@
             <textarea name="aboutHighlights" rows="4" placeholder="Veículos revisados&#10;Apoio na documentação&#10;Atendimento rápido"></textarea>
           </label>
           <label class="full">Endereço da loja
-            <input type="text" name="storeAddress" placeholder="Ex.: Rua Exemplo, 123 — Cidade">
+            <input id="store-address" type="text" name="storeAddress" placeholder="Ex.: Rua Exemplo, 123 — Cidade">
           </label>
           <label class="full">Email da loja
-            <input type="email" name="storeEmail" placeholder="Ex.: contato@jeautomoveis.com">
+            <input id="store-email" type="email" name="storeEmail" placeholder="Ex.: contato@jeautomoveis.com">
           </label>
 
           <div class="full admin-actions">
@@ -196,6 +215,7 @@
 
         <p id="settingsMessage" class="admin-message"></p>
       </section>
+      </div>
     </section>
   </main>
 
