@@ -18,6 +18,8 @@ app.use(express.json());
 const FRONTEND_ROOT = path.resolve(__dirname, '..');
 const DATA_DIR = path.join(__dirname, 'data');
 const VEHICLES_FILE = path.join(DATA_DIR, 'vehicles.json');
+const SELLERS_FILE = path.join(DATA_DIR, 'sellers.json');
+const BANNERS_FILE = path.join(DATA_DIR, 'banners.json');
 const UPLOADS_DIR = path.join(FRONTEND_ROOT, 'uploads');
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'je2026';
@@ -42,6 +44,12 @@ function ensureStorage() {
   if (!fs.existsSync(VEHICLES_FILE)) {
     fs.writeFileSync(VEHICLES_FILE, '[]', 'utf-8');
   }
+  if (!fs.existsSync(SELLERS_FILE)) {
+    fs.writeFileSync(SELLERS_FILE, '[]', 'utf-8');
+  }
+  if (!fs.existsSync(BANNERS_FILE)) {
+    fs.writeFileSync(BANNERS_FILE, '[]', 'utf-8');
+  }
 }
 
 if (hasCloudinaryConfig) {
@@ -54,8 +62,32 @@ if (hasCloudinaryConfig) {
 }
 
 function readVehicles() {
+  return readCollection(VEHICLES_FILE);
+}
+
+function writeVehicles(vehicles) {
+  writeCollection(VEHICLES_FILE, vehicles);
+}
+
+function readSellers() {
+  return readCollection(SELLERS_FILE);
+}
+
+function writeSellers(sellers) {
+  writeCollection(SELLERS_FILE, sellers);
+}
+
+function readBanners() {
+  return readCollection(BANNERS_FILE);
+}
+
+function writeBanners(banners) {
+  writeCollection(BANNERS_FILE, banners);
+}
+
+function readCollection(filePath) {
   ensureStorage();
-  const raw = fs.readFileSync(VEHICLES_FILE, 'utf-8');
+  const raw = fs.readFileSync(filePath, 'utf-8');
   try {
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
@@ -64,9 +96,9 @@ function readVehicles() {
   }
 }
 
-function writeVehicles(vehicles) {
+function writeCollection(filePath, values) {
   ensureStorage();
-  fs.writeFileSync(VEHICLES_FILE, JSON.stringify(vehicles, null, 2), 'utf-8');
+  fs.writeFileSync(filePath, JSON.stringify(values, null, 2), 'utf-8');
 }
 
 async function uploadToCloudinary(file) {
@@ -199,6 +231,18 @@ app.get('/api/vehicles', (_req, res) => {
   res.json({ ok: true, vehicles });
 });
 
+app.get('/api/sellers', (_req, res) => {
+  const sellers = readSellers();
+  res.json({ ok: true, sellers });
+});
+
+app.get('/api/banners', (_req, res) => {
+  const banners = readBanners()
+    .filter((banner) => banner.isActive !== false)
+    .sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+  res.json({ ok: true, banners });
+});
+
 app.post('/api/admin/login', (req, res) => {
   const { username, password } = req.body || {};
   if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
@@ -226,6 +270,16 @@ app.post('/api/admin/logout', requireAdmin, (req, res) => {
 app.get('/api/admin/vehicles', requireAdmin, (_req, res) => {
   const vehicles = readVehicles();
   return res.json({ ok: true, vehicles });
+});
+
+app.get('/api/admin/sellers', requireAdmin, (_req, res) => {
+  const sellers = readSellers();
+  return res.json({ ok: true, sellers });
+});
+
+app.get('/api/admin/banners', requireAdmin, (_req, res) => {
+  const banners = readBanners().sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+  return res.json({ ok: true, banners });
 });
 
 app.post('/api/admin/vehicles', requireAdmin, upload.single('photo'), async (req, res) => {
@@ -314,6 +368,177 @@ app.delete('/api/admin/vehicles/:id', requireAdmin, async (req, res) => {
     await removeStoredImage(removed);
   } catch (err) {
     console.warn('Falha ao remover imagem ao excluir veículo:', err.message);
+  }
+
+  return res.json({ ok: true });
+});
+
+app.post('/api/admin/sellers', requireAdmin, upload.single('photo'), async (req, res) => {
+  const { name, role, phone, whatsapp, status, bio } = req.body || {};
+  if (!name) return res.status(400).json({ error: 'Campo obrigatório: name' });
+
+  let imageData = null;
+  try {
+    imageData = await persistImage(req.file);
+  } catch (err) {
+    console.error('Erro ao salvar foto do vendedor:', err);
+    return res.status(500).json({ error: 'Falha ao salvar foto do vendedor' });
+  }
+
+  const seller = {
+    id: crypto.randomUUID(),
+    name: String(name).trim(),
+    role: String(role || '').trim() || 'Consultor de vendas',
+    phone: String(phone || '').trim(),
+    whatsapp: String(whatsapp || '').trim(),
+    status: String(status || '').trim() || 'Online',
+    bio: String(bio || '').trim(),
+    image: imageData ? imageData.image : '',
+    imageStorage: imageData ? imageData.imageStorage : 'none',
+    imagePublicId: imageData ? imageData.imagePublicId : null,
+    createdAt: new Date().toISOString(),
+  };
+
+  const sellers = readSellers();
+  sellers.unshift(seller);
+  writeSellers(sellers);
+  return res.status(201).json({ ok: true, seller });
+});
+
+app.put('/api/admin/sellers/:id', requireAdmin, upload.single('photo'), async (req, res) => {
+  const sellers = readSellers();
+  const index = sellers.findIndex((item) => item.id === req.params.id);
+  if (index < 0) return res.status(404).json({ error: 'Vendedor não encontrado' });
+
+  const current = sellers[index];
+  const { name, role, phone, whatsapp, status, bio } = req.body || {};
+  const updated = {
+    ...current,
+    name: name !== undefined ? String(name).trim() : current.name,
+    role: role !== undefined ? String(role).trim() : current.role,
+    phone: phone !== undefined ? String(phone).trim() : current.phone,
+    whatsapp: whatsapp !== undefined ? String(whatsapp).trim() : current.whatsapp,
+    status: status !== undefined ? String(status).trim() : current.status,
+    bio: bio !== undefined ? String(bio).trim() : current.bio,
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (req.file) {
+    try {
+      await removeStoredImage(current);
+      const imageData = await persistImage(req.file);
+      updated.image = imageData ? imageData.image : current.image;
+      updated.imageStorage = imageData ? imageData.imageStorage : current.imageStorage;
+      updated.imagePublicId = imageData ? imageData.imagePublicId : current.imagePublicId;
+    } catch (err) {
+      console.error('Erro ao atualizar foto do vendedor:', err);
+      return res.status(500).json({ error: 'Falha ao atualizar foto do vendedor' });
+    }
+  }
+
+  sellers[index] = updated;
+  writeSellers(sellers);
+  return res.json({ ok: true, seller: updated });
+});
+
+app.delete('/api/admin/sellers/:id', requireAdmin, async (req, res) => {
+  const sellers = readSellers();
+  const index = sellers.findIndex((item) => item.id === req.params.id);
+  if (index < 0) return res.status(404).json({ error: 'Vendedor não encontrado' });
+
+  const [removed] = sellers.splice(index, 1);
+  writeSellers(sellers);
+
+  try {
+    await removeStoredImage(removed);
+  } catch (err) {
+    console.warn('Falha ao remover foto do vendedor:', err.message);
+  }
+
+  return res.json({ ok: true });
+});
+
+app.post('/api/admin/banners', requireAdmin, upload.single('image'), async (req, res) => {
+  const { title, subtitle, ctaText, ctaLink, order, isActive } = req.body || {};
+  if (!title) return res.status(400).json({ error: 'Campo obrigatório: title' });
+
+  let imageData = null;
+  try {
+    imageData = await persistImage(req.file);
+  } catch (err) {
+    console.error('Erro ao salvar imagem do banner:', err);
+    return res.status(500).json({ error: 'Falha ao salvar imagem do banner' });
+  }
+
+  const banner = {
+    id: crypto.randomUUID(),
+    title: String(title).trim(),
+    subtitle: String(subtitle || '').trim(),
+    ctaText: String(ctaText || '').trim() || 'Saiba mais',
+    ctaLink: String(ctaLink || '').trim() || '#estoque',
+    order: Number(order || 0),
+    isActive: String(isActive || 'true') !== 'false',
+    image: imageData ? imageData.image : '',
+    imageStorage: imageData ? imageData.imageStorage : 'none',
+    imagePublicId: imageData ? imageData.imagePublicId : null,
+    createdAt: new Date().toISOString(),
+  };
+
+  const banners = readBanners();
+  banners.unshift(banner);
+  writeBanners(banners);
+  return res.status(201).json({ ok: true, banner });
+});
+
+app.put('/api/admin/banners/:id', requireAdmin, upload.single('image'), async (req, res) => {
+  const banners = readBanners();
+  const index = banners.findIndex((item) => item.id === req.params.id);
+  if (index < 0) return res.status(404).json({ error: 'Banner não encontrado' });
+
+  const current = banners[index];
+  const { title, subtitle, ctaText, ctaLink, order, isActive } = req.body || {};
+
+  const updated = {
+    ...current,
+    title: title !== undefined ? String(title).trim() : current.title,
+    subtitle: subtitle !== undefined ? String(subtitle).trim() : current.subtitle,
+    ctaText: ctaText !== undefined ? String(ctaText).trim() : current.ctaText,
+    ctaLink: ctaLink !== undefined ? String(ctaLink).trim() : current.ctaLink,
+    order: order !== undefined ? Number(order) : current.order,
+    isActive: isActive !== undefined ? String(isActive) !== 'false' : current.isActive,
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (req.file) {
+    try {
+      await removeStoredImage(current);
+      const imageData = await persistImage(req.file);
+      updated.image = imageData ? imageData.image : current.image;
+      updated.imageStorage = imageData ? imageData.imageStorage : current.imageStorage;
+      updated.imagePublicId = imageData ? imageData.imagePublicId : current.imagePublicId;
+    } catch (err) {
+      console.error('Erro ao atualizar imagem do banner:', err);
+      return res.status(500).json({ error: 'Falha ao atualizar imagem do banner' });
+    }
+  }
+
+  banners[index] = updated;
+  writeBanners(banners);
+  return res.json({ ok: true, banner: updated });
+});
+
+app.delete('/api/admin/banners/:id', requireAdmin, async (req, res) => {
+  const banners = readBanners();
+  const index = banners.findIndex((item) => item.id === req.params.id);
+  if (index < 0) return res.status(404).json({ error: 'Banner não encontrado' });
+
+  const [removed] = banners.splice(index, 1);
+  writeBanners(banners);
+
+  try {
+    await removeStoredImage(removed);
+  } catch (err) {
+    console.warn('Falha ao remover imagem do banner:', err.message);
   }
 
   return res.json({ ok: true });

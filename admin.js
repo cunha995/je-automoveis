@@ -3,14 +3,25 @@ const TOKEN_KEY = 'je_admin_token';
 
 const loginSection = document.getElementById('loginSection');
 const panelSection = document.getElementById('panelSection');
-const listSection = document.getElementById('listSection');
 const loginForm = document.getElementById('loginForm');
 const loginMessage = document.getElementById('loginMessage');
+
 const vehicleForm = document.getElementById('vehicleForm');
-const formMessage = document.getElementById('formMessage');
+const vehicleMessage = document.getElementById('vehicleMessage');
 const adminVehicleList = document.getElementById('adminVehicleList');
+const cancelVehicleEditBtn = document.getElementById('cancelVehicleEditBtn');
+
+const sellerForm = document.getElementById('sellerForm');
+const sellerMessage = document.getElementById('sellerMessage');
+const adminSellerList = document.getElementById('adminSellerList');
+const cancelSellerEditBtn = document.getElementById('cancelSellerEditBtn');
+
+const bannerForm = document.getElementById('bannerForm');
+const bannerMessage = document.getElementById('bannerMessage');
+const adminBannerList = document.getElementById('adminBannerList');
+const cancelBannerEditBtn = document.getElementById('cancelBannerEditBtn');
+
 const logoutBtn = document.getElementById('logoutBtn');
-const cancelEditBtn = document.getElementById('cancelEditBtn');
 
 function getToken() {
   return localStorage.getItem(TOKEN_KEY) || '';
@@ -30,23 +41,9 @@ function authHeaders() {
   };
 }
 
-function formatPrice(price) {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    maximumFractionDigits: 0,
-  }).format(Number(price) || 0);
-}
-
 function showPanel(isLoggedIn) {
   loginSection.classList.toggle('hidden', isLoggedIn);
   panelSection.classList.toggle('hidden', !isLoggedIn);
-  listSection.classList.toggle('hidden', !isLoggedIn);
-}
-
-function clearForm() {
-  vehicleForm.reset();
-  vehicleForm.elements.id.value = '';
 }
 
 function setMessage(target, message, isError = false) {
@@ -57,32 +54,45 @@ function setMessage(target, message, isError = false) {
 function toAbsoluteImage(pathValue) {
   if (!pathValue) return 'images/carros/carro-01.svg';
   if (pathValue.startsWith('http://') || pathValue.startsWith('https://')) return pathValue;
-  return `${API_BASE}${pathValue}`;
+  if (pathValue.startsWith('/')) return `${API_BASE}${pathValue}`;
+  return pathValue;
 }
 
-function fillForm(vehicle) {
-  vehicleForm.elements.id.value = vehicle.id || '';
-  vehicleForm.elements.model.value = vehicle.model || '';
-  vehicleForm.elements.year.value = vehicle.year || '';
-  vehicleForm.elements.km.value = vehicle.km || '';
-  vehicleForm.elements.fuel.value = vehicle.fuel || '';
-  vehicleForm.elements.transmission.value = vehicle.transmission || '';
-  vehicleForm.elements.status.value = vehicle.status || '';
-  vehicleForm.elements.price.value = vehicle.price || '';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+function formatPrice(price) {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    maximumFractionDigits: 0,
+  }).format(Number(price) || 0);
+}
+
+function clearVehicleForm() {
+  vehicleForm.reset();
+  vehicleForm.elements.id.value = '';
+}
+
+function clearSellerForm() {
+  sellerForm.reset();
+  sellerForm.elements.id.value = '';
+}
+
+function clearBannerForm() {
+  bannerForm.reset();
+  bannerForm.elements.id.value = '';
+  bannerForm.elements.isActive.value = 'true';
+}
+
+function handleUnauthorized(res) {
+  if (res.status !== 401) return false;
+  setToken('');
+  showPanel(false);
+  setMessage(loginMessage, 'Sua sessão expirou. Faça login novamente.', true);
+  return true;
 }
 
 async function loadVehicles() {
-  const res = await fetch(`${API_BASE}/api/admin/vehicles`, {
-    headers: authHeaders(),
-  });
-
-  if (res.status === 401) {
-    setToken('');
-    showPanel(false);
-    return;
-  }
-
+  const res = await fetch(`${API_BASE}/api/admin/vehicles`, { headers: authHeaders() });
+  if (handleUnauthorized(res)) return;
   const data = await res.json();
   const vehicles = Array.isArray(data.vehicles) ? data.vehicles : [];
 
@@ -100,39 +110,166 @@ async function loadVehicles() {
         <p><strong>${formatPrice(vehicle.price)}</strong> · ${vehicle.status || 'Disponível'}</p>
       </div>
       <div class="admin-item-actions">
-        <button class="btn-edit" data-action="edit" data-id="${vehicle.id}">Editar</button>
-        <button class="btn-delete" data-action="delete" data-id="${vehicle.id}">Excluir</button>
+        <button class="btn-edit" data-edit-vehicle="${vehicle.id}">Editar</button>
+        <button class="btn-delete" data-delete-vehicle="${vehicle.id}">Excluir</button>
       </div>
     </article>
   `).join('');
 
-  adminVehicleList.querySelectorAll('button[data-action="edit"]').forEach((btn) => {
+  adminVehicleList.querySelectorAll('[data-edit-vehicle]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const vehicle = vehicles.find((item) => item.id === btn.dataset.id);
-      if (vehicle) fillForm(vehicle);
+      const current = vehicles.find((item) => item.id === btn.dataset.editVehicle);
+      if (!current) return;
+      vehicleForm.elements.id.value = current.id || '';
+      vehicleForm.elements.model.value = current.model || '';
+      vehicleForm.elements.year.value = current.year || '';
+      vehicleForm.elements.km.value = current.km || '';
+      vehicleForm.elements.fuel.value = current.fuel || '';
+      vehicleForm.elements.transmission.value = current.transmission || '';
+      vehicleForm.elements.status.value = current.status || '';
+      vehicleForm.elements.price.value = current.price || '';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     });
   });
 
-  adminVehicleList.querySelectorAll('button[data-action="delete"]').forEach((btn) => {
+  adminVehicleList.querySelectorAll('[data-delete-vehicle]').forEach((btn) => {
     btn.addEventListener('click', async () => {
-      const confirmed = window.confirm('Deseja excluir este veículo?');
-      if (!confirmed) return;
-
-      const resDelete = await fetch(`${API_BASE}/api/admin/vehicles/${btn.dataset.id}`, {
+      if (!window.confirm('Deseja excluir este veículo?')) return;
+      const delRes = await fetch(`${API_BASE}/api/admin/vehicles/${btn.dataset.deleteVehicle}`, {
         method: 'DELETE',
         headers: authHeaders(),
       });
-
-      if (!resDelete.ok) {
-        setMessage(formMessage, 'Falha ao excluir veículo.', true);
+      if (!delRes.ok) {
+        setMessage(vehicleMessage, 'Falha ao excluir veículo.', true);
         return;
       }
-
-      setMessage(formMessage, 'Veículo excluído com sucesso.');
-      clearForm();
+      setMessage(vehicleMessage, 'Veículo excluído com sucesso.');
+      clearVehicleForm();
       loadVehicles();
     });
   });
+}
+
+async function loadSellers() {
+  const res = await fetch(`${API_BASE}/api/admin/sellers`, { headers: authHeaders() });
+  if (handleUnauthorized(res)) return;
+  const data = await res.json();
+  const sellers = Array.isArray(data.sellers) ? data.sellers : [];
+
+  if (!sellers.length) {
+    adminSellerList.innerHTML = '<p>Nenhum vendedor cadastrado ainda.</p>';
+    return;
+  }
+
+  adminSellerList.innerHTML = sellers.map((seller) => `
+    <article class="admin-item">
+      <img src="${toAbsoluteImage(seller.image)}" alt="${seller.name}">
+      <div>
+        <h3>${seller.name}</h3>
+        <p>${seller.role || 'Consultor de vendas'} · ${seller.status || 'Online'}</p>
+        <p>${seller.phone || ''} ${seller.whatsapp ? `· WhatsApp: ${seller.whatsapp}` : ''}</p>
+      </div>
+      <div class="admin-item-actions">
+        <button class="btn-edit" data-edit-seller="${seller.id}">Editar</button>
+        <button class="btn-delete" data-delete-seller="${seller.id}">Excluir</button>
+      </div>
+    </article>
+  `).join('');
+
+  adminSellerList.querySelectorAll('[data-edit-seller]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const current = sellers.find((item) => item.id === btn.dataset.editSeller);
+      if (!current) return;
+      sellerForm.elements.id.value = current.id || '';
+      sellerForm.elements.name.value = current.name || '';
+      sellerForm.elements.role.value = current.role || '';
+      sellerForm.elements.phone.value = current.phone || '';
+      sellerForm.elements.whatsapp.value = current.whatsapp || '';
+      sellerForm.elements.status.value = current.status || '';
+      sellerForm.elements.bio.value = current.bio || '';
+      window.scrollTo({ top: sellerForm.offsetTop - 40, behavior: 'smooth' });
+    });
+  });
+
+  adminSellerList.querySelectorAll('[data-delete-seller]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (!window.confirm('Deseja excluir este vendedor?')) return;
+      const delRes = await fetch(`${API_BASE}/api/admin/sellers/${btn.dataset.deleteSeller}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      });
+      if (!delRes.ok) {
+        setMessage(sellerMessage, 'Falha ao excluir vendedor.', true);
+        return;
+      }
+      setMessage(sellerMessage, 'Vendedor excluído com sucesso.');
+      clearSellerForm();
+      loadSellers();
+    });
+  });
+}
+
+async function loadBanners() {
+  const res = await fetch(`${API_BASE}/api/admin/banners`, { headers: authHeaders() });
+  if (handleUnauthorized(res)) return;
+  const data = await res.json();
+  const banners = Array.isArray(data.banners) ? data.banners : [];
+
+  if (!banners.length) {
+    adminBannerList.innerHTML = '<p>Nenhum banner cadastrado ainda.</p>';
+    return;
+  }
+
+  adminBannerList.innerHTML = banners.map((banner) => `
+    <article class="admin-item">
+      <img src="${toAbsoluteImage(banner.image)}" alt="${banner.title}">
+      <div>
+        <h3>${banner.title}</h3>
+        <p>${banner.subtitle || ''}</p>
+        <p>Ordem: ${banner.order || 0} · ${banner.isActive ? 'Ativo' : 'Inativo'}</p>
+      </div>
+      <div class="admin-item-actions">
+        <button class="btn-edit" data-edit-banner="${banner.id}">Editar</button>
+        <button class="btn-delete" data-delete-banner="${banner.id}">Excluir</button>
+      </div>
+    </article>
+  `).join('');
+
+  adminBannerList.querySelectorAll('[data-edit-banner]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const current = banners.find((item) => item.id === btn.dataset.editBanner);
+      if (!current) return;
+      bannerForm.elements.id.value = current.id || '';
+      bannerForm.elements.title.value = current.title || '';
+      bannerForm.elements.subtitle.value = current.subtitle || '';
+      bannerForm.elements.ctaText.value = current.ctaText || '';
+      bannerForm.elements.ctaLink.value = current.ctaLink || '';
+      bannerForm.elements.order.value = current.order || 0;
+      bannerForm.elements.isActive.value = current.isActive === false ? 'false' : 'true';
+      window.scrollTo({ top: bannerForm.offsetTop - 40, behavior: 'smooth' });
+    });
+  });
+
+  adminBannerList.querySelectorAll('[data-delete-banner]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (!window.confirm('Deseja excluir este banner?')) return;
+      const delRes = await fetch(`${API_BASE}/api/admin/banners/${btn.dataset.deleteBanner}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      });
+      if (!delRes.ok) {
+        setMessage(bannerMessage, 'Falha ao excluir banner.', true);
+        return;
+      }
+      setMessage(bannerMessage, 'Banner excluído com sucesso.');
+      clearBannerForm();
+      loadBanners();
+    });
+  });
+}
+
+async function loadAllAdminData() {
+  await Promise.all([loadVehicles(), loadSellers(), loadBanners()]);
 }
 
 loginForm.addEventListener('submit', async (event) => {
@@ -157,36 +294,67 @@ loginForm.addEventListener('submit', async (event) => {
   setToken(data.token);
   showPanel(true);
   setMessage(loginMessage, 'Login realizado com sucesso.');
-  loadVehicles();
+  loadAllAdminData();
 });
 
 vehicleForm.addEventListener('submit', async (event) => {
   event.preventDefault();
-
-  const vehicleId = vehicleForm.elements.id.value;
-  const formData = new FormData(vehicleForm);
-
-  const endpoint = vehicleId
-    ? `${API_BASE}/api/admin/vehicles/${vehicleId}`
-    : `${API_BASE}/api/admin/vehicles`;
-
-  const method = vehicleId ? 'PUT' : 'POST';
-
+  const id = vehicleForm.elements.id.value;
+  const endpoint = id ? `${API_BASE}/api/admin/vehicles/${id}` : `${API_BASE}/api/admin/vehicles`;
+  const method = id ? 'PUT' : 'POST';
   const res = await fetch(endpoint, {
     method,
     headers: authHeaders(),
-    body: formData,
+    body: new FormData(vehicleForm),
   });
-
   const data = await res.json();
   if (!res.ok) {
-    setMessage(formMessage, data.error || 'Falha ao salvar veículo.', true);
+    setMessage(vehicleMessage, data.error || 'Falha ao salvar veículo.', true);
     return;
   }
-
-  setMessage(formMessage, vehicleId ? 'Veículo atualizado com sucesso.' : 'Veículo cadastrado com sucesso.');
-  clearForm();
+  setMessage(vehicleMessage, id ? 'Veículo atualizado com sucesso.' : 'Veículo cadastrado com sucesso.');
+  clearVehicleForm();
   loadVehicles();
+});
+
+sellerForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const id = sellerForm.elements.id.value;
+  const endpoint = id ? `${API_BASE}/api/admin/sellers/${id}` : `${API_BASE}/api/admin/sellers`;
+  const method = id ? 'PUT' : 'POST';
+  const res = await fetch(endpoint, {
+    method,
+    headers: authHeaders(),
+    body: new FormData(sellerForm),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    setMessage(sellerMessage, data.error || 'Falha ao salvar vendedor.', true);
+    return;
+  }
+  setMessage(sellerMessage, id ? 'Vendedor atualizado com sucesso.' : 'Vendedor cadastrado com sucesso.');
+  clearSellerForm();
+  loadSellers();
+});
+
+bannerForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const id = bannerForm.elements.id.value;
+  const endpoint = id ? `${API_BASE}/api/admin/banners/${id}` : `${API_BASE}/api/admin/banners`;
+  const method = id ? 'PUT' : 'POST';
+  const res = await fetch(endpoint, {
+    method,
+    headers: authHeaders(),
+    body: new FormData(bannerForm),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    setMessage(bannerMessage, data.error || 'Falha ao salvar banner.', true);
+    return;
+  }
+  setMessage(bannerMessage, id ? 'Banner atualizado com sucesso.' : 'Banner cadastrado com sucesso.');
+  clearBannerForm();
+  loadBanners();
 });
 
 logoutBtn.addEventListener('click', async () => {
@@ -201,15 +369,25 @@ logoutBtn.addEventListener('click', async () => {
   showPanel(false);
 });
 
-cancelEditBtn.addEventListener('click', () => {
-  clearForm();
-  setMessage(formMessage, 'Edição cancelada.');
+cancelVehicleEditBtn.addEventListener('click', () => {
+  clearVehicleForm();
+  setMessage(vehicleMessage, 'Edição de veículo cancelada.');
+});
+
+cancelSellerEditBtn.addEventListener('click', () => {
+  clearSellerForm();
+  setMessage(sellerMessage, 'Edição de vendedor cancelada.');
+});
+
+cancelBannerEditBtn.addEventListener('click', () => {
+  clearBannerForm();
+  setMessage(bannerMessage, 'Edição de banner cancelada.');
 });
 
 (function init() {
   const hasToken = !!getToken();
   showPanel(hasToken);
   if (hasToken) {
-    loadVehicles();
+    loadAllAdminData();
   }
 })();

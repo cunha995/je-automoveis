@@ -8,6 +8,13 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <section id="topBanner" class="top-banner" aria-label="Ofertas e novidades">
+    <div id="topBannerSlides" class="top-banner-slides"></div>
+    <button id="topBannerPrev" class="top-banner-nav prev" type="button" aria-label="Banner anterior">‹</button>
+    <button id="topBannerNext" class="top-banner-nav next" type="button" aria-label="Próximo banner">›</button>
+    <div id="topBannerDots" class="top-banner-dots" aria-hidden="true"></div>
+  </section>
+
   <header class="site-header">
     <div class="container header-inner">
       <a href="#" class="brand">
@@ -16,6 +23,7 @@
       </a>
       <nav class="main-nav">
         <a href="#estoque">Estoque</a>
+        <a href="#vendedores">Vendedores</a>
         <a href="#sobre">Sobre</a>
         <a href="#contato">Contato</a>
       </nav>
@@ -41,6 +49,14 @@
         <p>Atualizado com as opções em estoque na garagem.</p>
       </div>
       <div id="vehicleGrid" class="vehicle-grid" aria-live="polite"></div>
+    </section>
+
+    <section id="vendedores" class="section container">
+      <div class="section-head">
+        <h2>Equipe de vendedores</h2>
+        <p>Fale direto com quem vai te ajudar a escolher o carro ideal.</p>
+      </div>
+      <div id="sellerGrid" class="seller-grid" aria-live="polite"></div>
     </section>
 
     <section id="sobre" class="section alt container">

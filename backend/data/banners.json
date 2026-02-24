@@ -1,0 +1,22 @@
+[
+  {
+    "id": "banner-1",
+    "title": "Feirão de seminovos JE Automóveis",
+    "subtitle": "Novidades e ofertas especiais toda semana.",
+    "ctaText": "Ver estoque",
+    "ctaLink": "#estoque",
+    "order": 1,
+    "isActive": true,
+    "image": "images/carros/carro-03.svg"
+  },
+  {
+    "id": "banner-2",
+    "title": "Equipe pronta para te atender",
+    "subtitle": "Fale com nossos vendedores e receba proposta na hora.",
+    "ctaText": "Falar com vendedores",
+    "ctaLink": "#vendedores",
+    "order": 2,
+    "isActive": true,
+    "image": "images/carros/carro-04.svg"
+  }
+]

@@ -38,50 +38,125 @@
       <p id="loginMessage" class="admin-message"></p>
     </section>
 
-    <section id="panelSection" class="admin-card hidden">
-      <div class="admin-head">
-        <h2>Cadastro de veículos</h2>
-        <button id="logoutBtn" class="btn-secondary" type="button">Sair</button>
-      </div>
-
-      <form id="vehicleForm" class="admin-form grid-2" enctype="multipart/form-data">
-        <input type="hidden" name="id">
-        <label>Modelo
-          <input type="text" name="model" required placeholder="Ex.: Fiat Argo Drive">
-        </label>
-        <label>Ano
-          <input type="number" name="year" required min="1990" max="2100">
-        </label>
-        <label>KM
-          <input type="text" name="km" placeholder="Ex.: 62.000 km">
-        </label>
-        <label>Combustível
-          <input type="text" name="fuel" placeholder="Ex.: Flex">
-        </label>
-        <label>Câmbio
-          <input type="text" name="transmission" placeholder="Ex.: Manual">
-        </label>
-        <label>Status
-          <input type="text" name="status" placeholder="Ex.: Disponível">
-        </label>
-        <label>Preço (R$)
-          <input type="number" name="price" required min="1" step="1" placeholder="68900">
-        </label>
-        <label>Foto do veículo
-          <input type="file" name="photo" accept="image/*">
-        </label>
-        <div class="full admin-actions">
-          <button class="btn-primary" type="submit">Salvar veículo</button>
-          <button class="btn-secondary" type="button" id="cancelEditBtn">Cancelar edição</button>
+    <section id="panelSection" class="admin-stack hidden">
+      <section class="admin-card">
+        <div class="admin-head">
+          <h2>Cadastro de veículos</h2>
+          <button id="logoutBtn" class="btn-secondary" type="button">Sair</button>
         </div>
-      </form>
 
-      <p id="formMessage" class="admin-message"></p>
-    </section>
+        <form id="vehicleForm" class="admin-form grid-2" enctype="multipart/form-data">
+          <input type="hidden" name="id">
+          <label>Modelo
+            <input type="text" name="model" required placeholder="Ex.: Fiat Argo Drive">
+          </label>
+          <label>Ano
+            <input type="number" name="year" required min="1990" max="2100">
+          </label>
+          <label>KM
+            <input type="text" name="km" placeholder="Ex.: 62.000 km">
+          </label>
+          <label>Combustível
+            <input type="text" name="fuel" placeholder="Ex.: Flex">
+          </label>
+          <label>Câmbio
+            <input type="text" name="transmission" placeholder="Ex.: Manual">
+          </label>
+          <label>Status
+            <input type="text" name="status" placeholder="Ex.: Disponível">
+          </label>
+          <label>Preço (R$)
+            <input type="number" name="price" required min="1" step="1" placeholder="68900">
+          </label>
+          <label>Foto do veículo
+            <input type="file" name="photo" accept="image/*">
+          </label>
+          <div class="full admin-actions">
+            <button class="btn-primary" type="submit">Salvar veículo</button>
+            <button class="btn-secondary" type="button" id="cancelVehicleEditBtn">Cancelar edição</button>
+          </div>
+        </form>
 
-    <section id="listSection" class="admin-card hidden">
-      <h2>Veículos cadastrados</h2>
-      <div id="adminVehicleList" class="admin-list"></div>
+        <p id="vehicleMessage" class="admin-message"></p>
+        <div id="adminVehicleList" class="admin-list"></div>
+      </section>
+
+      <section class="admin-card">
+        <div class="admin-head">
+          <h2>Cadastro de vendedores</h2>
+        </div>
+        <form id="sellerForm" class="admin-form grid-2" enctype="multipart/form-data">
+          <input type="hidden" name="id">
+          <label>Nome
+            <input type="text" name="name" required placeholder="Ex.: Carlos Mendes">
+          </label>
+          <label>Cargo
+            <input type="text" name="role" placeholder="Ex.: Consultor de vendas">
+          </label>
+          <label>Telefone
+            <input type="text" name="phone" placeholder="Ex.: (41) 99999-9999">
+          </label>
+          <label>WhatsApp (somente números)
+            <input type="text" name="whatsapp" placeholder="Ex.: 5541999999999">
+          </label>
+          <label>Status
+            <input type="text" name="status" placeholder="Ex.: Online">
+          </label>
+          <label>Foto do vendedor
+            <input type="file" name="photo" accept="image/*">
+          </label>
+          <label class="full">Bio
+            <input type="text" name="bio" placeholder="Ex.: Especialista em seminovos e financiamento.">
+          </label>
+          <div class="full admin-actions">
+            <button class="btn-primary" type="submit">Salvar vendedor</button>
+            <button class="btn-secondary" type="button" id="cancelSellerEditBtn">Cancelar edição</button>
+          </div>
+        </form>
+
+        <p id="sellerMessage" class="admin-message"></p>
+        <div id="adminSellerList" class="admin-list"></div>
+      </section>
+
+      <section class="admin-card">
+        <div class="admin-head">
+          <h2>Banners / Ofertas (topo do site)</h2>
+        </div>
+        <form id="bannerForm" class="admin-form grid-2" enctype="multipart/form-data">
+          <input type="hidden" name="id">
+          <label>Título do banner
+            <input type="text" name="title" required placeholder="Ex.: Feirão de seminovos">
+          </label>
+          <label>Subtítulo
+            <input type="text" name="subtitle" placeholder="Ex.: Condições especiais nesta semana">
+          </label>
+          <label>Texto do botão
+            <input type="text" name="ctaText" placeholder="Ex.: Ver ofertas">
+          </label>
+          <label>Link do botão
+            <input type="text" name="ctaLink" placeholder="Ex.: #estoque ou https://...">
+          </label>
+          <label>Ordem de exibição
+            <input type="number" name="order" min="0" step="1" placeholder="0">
+          </label>
+          <label>Ativo
+            <select name="isActive">
+              <option value="true">Sim</option>
+              <option value="false">Não</option>
+            </select>
+          </label>
+          <label class="full">Imagem do banner
+            <input type="file" name="image" accept="image/*">
+          </label>
+          <div class="full admin-actions">
+            <button class="btn-primary" type="submit">Salvar banner</button>
+            <button class="btn-secondary" type="button" id="cancelBannerEditBtn">Cancelar edição</button>
+          </div>
+        </form>
+
+        <p id="bannerMessage" class="admin-message"></p>
+        <div id="adminBannerList" class="admin-list"></div>
+      </section>
     </section>
   </main>
 

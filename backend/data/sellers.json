@@ -1,0 +1,22 @@
+[
+  {
+    "id": "seller-1",
+    "name": "João Pereira",
+    "role": "Consultor de vendas",
+    "phone": "(41) 99999-0001",
+    "whatsapp": "5541999990001",
+    "status": "Online",
+    "bio": "Atendimento rápido para seminovos e propostas.",
+    "image": "images/carros/carro-01.svg"
+  },
+  {
+    "id": "seller-2",
+    "name": "Maria Souza",
+    "role": "Especialista em financiamento",
+    "phone": "(41) 99999-0002",
+    "whatsapp": "5541999990002",
+    "status": "Online",
+    "bio": "Ajuda em documentação e simulações.",
+    "image": "images/carros/carro-02.svg"
+  }
+]
