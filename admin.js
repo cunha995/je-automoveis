@@ -125,7 +125,10 @@ function handleUnauthorized(res) {
 }
 
 async function loadVehicles() {
-  const res = await fetch(`${API_BASE}/api/admin/vehicles`, { headers: authHeaders() });
+  const res = await fetch(`${API_BASE}/api/admin/vehicles?t=${Date.now()}`, {
+    headers: authHeaders(),
+    cache: 'no-store',
+  });
   if (handleUnauthorized(res)) return;
   const data = await res.json();
   const vehicles = Array.isArray(data.vehicles) ? data.vehicles : [];

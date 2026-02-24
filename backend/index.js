@@ -419,6 +419,9 @@ function sendWithSendGrid({ to, from, subject, text }) {
 }
 
 app.get('/api/vehicles', (_req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
   const vehicles = readVehicles().map((vehicle) => {
     const normalized = normalizeVehicleMedia(vehicle);
     return {

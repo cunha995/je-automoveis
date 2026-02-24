@@ -371,8 +371,8 @@ function renderSiteSettings(settings) {
 
 async function loadVehicles() {
   try {
-    const url = (BACKEND_URL || '') + '/api/vehicles';
-    const res = await fetch(url);
+    const url = (BACKEND_URL || '') + '/api/vehicles?t=' + Date.now();
+    const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) throw new Error('Falha ao carregar veículos');
     const data = await res.json();
     const vehicles = Array.isArray(data.vehicles) ? data.vehicles : [];
