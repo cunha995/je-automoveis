@@ -1,0 +1,35 @@
+/* Basic styles for JE Automóveis site */
+:root{
+  --primary:#d32f2f;
+  --dark:#222;
+  --muted:#666;
+  --max-width:1100px;
+  --container-padding:16px;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial,Helvetica,sans-serif;color:var(--dark)}
+.container{max-width:var(--max-width);margin:0 auto;padding:0 var(--container-padding)}
+.site-header{background:#fff;border-bottom:1px solid #eee}
+.header-inner{display:flex;align-items:center;justify-content:space-between;padding:12px 0}
+.brand{display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--dark)}
+.logo{width:48px;height:48px}
+.main-nav a{margin-left:16px;text-decoration:none;color:var(--muted)}
+.hero{background:linear-gradient(90deg,#fafafa,#fff);padding:48px 0}
+.hero-inner{display:flex;flex-direction:column;gap:12px;align-items:flex-start}
+.btn-primary{background:var(--primary);color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;display:inline-block}
+.section{padding:40px 0}
+.section.alt{background:#f9f9f9}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:16px}
+.card{padding:18px;border:1px solid #eee;border-radius:8px;background:#fff}
+.gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px}
+.thumb{background:#ddd;height:100px;display:flex;align-items:center;justify-content:center;border-radius:6px}
+.contact-section{display:grid;grid-template-columns:1fr 320px;gap:24px;align-items:start}
+.contact-form label{display:block;margin-bottom:8px}
+.contact-form input,.contact-form textarea{width:100%;padding:8px;border:1px solid #ccc;border-radius:6px}
+.site-footer{padding:18px 0;background:#fff;border-top:1px solid #eee;text-align:center}
+
+@media (max-width:800px){
+  .contact-section{grid-template-columns:1fr}
+  .main-nav{display:none}
+  .hero-inner{align-items:center;text-align:center}
+}

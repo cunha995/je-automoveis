@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JE Automóveis — Oficina e Vendas</title>
+  <meta name="description" content="JE Automóveis — serviços automotivos, manutenção, revisão e vendas de veículos.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="#" class="brand">
+        <img src="images/logo.svg" alt="JE Automóveis logo" class="logo">
+        <span>JE Automóveis</span>
+      </a>
+      <nav class="main-nav">
+        <a href="#servicos">Serviços</a>
+        <a href="#sobre">Sobre</a>
+        <a href="#galeria">Galeria</a>
+        <a href="#contato">Contato</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container hero-inner">
+        <h1>Consertos rápidos e confiança para seu veículo</h1>
+        <p>Manutenção, revisão e venda de carros com atendimento especializado.</p>
+        <a href="#contato" class="btn-primary">Solicitar Orçamento</a>
+      </div>
+    </section>
+
+    <section id="servicos" class="section container">
+      <h2>Serviços</h2>
+      <div class="cards">
+        <div class="card">
+          <h3>Manutenção</h3>
+          <p>Revisões, troca de óleo, alinhamento e balanceamento.</p>
+        </div>
+        <div class="card">
+          <h3>Diagnóstico</h3>
+          <p>Leitura de erros, eletrônica e inspeção completa.</p>
+        </div>
+        <div class="card">
+          <h3>Vendas</h3>
+          <p>Venda e intermediação de veículos revisados e garantidos.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="sobre" class="section alt container">
+      <h2>Sobre a JE Automóveis</h2>
+      <p>Oficina familiar com anos de experiência em manutenção automotiva. Nossa prioridade é segurança e transparência para os clientes.</p>
+    </section>
+
+    <section id="galeria" class="section container">
+      <h2>Galeria</h2>
+      <div class="gallery">
+        <div class="thumb">Imagem 1</div>
+        <div class="thumb">Imagem 2</div>
+        <div class="thumb">Imagem 3</div>
+      </div>
+    </section>
+
+    <section id="contato" class="section alt container contact-section">
+      <h2>Contato</h2>
+      <form id="contactForm" class="contact-form">
+        <label>Nome<input type="text" name="name" required></label>
+        <label>Email<input type="email" name="email" required></label>
+        <label>Telefone<input type="tel" name="phone"></label>
+        <label>Mensagem<textarea name="message" rows="4" required></textarea></label>
+        <button type="submit" class="btn-primary">Enviar</button>
+      </form>
+      <div class="contact-info">
+        <p><strong>Endereço:</strong> Rua Exemplo, 123 — Sua Cidade</p>
+        <p><strong>Telefone:</strong> (00) 0 0000-0000</p>
+        <p><strong>Email:</strong> contato@jeautomoveis.com</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>© JE Automóveis — Todos os direitos reservados</p>
+    </div>
+  </footer>
+
+  <script src="scripts.js"></script>
+</body>
+</html>

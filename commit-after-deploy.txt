@@ -1,0 +1,12 @@
+Git commit & push after backend deploy
+
+Run these commands in PowerShell from the project root to commit the frontend update and push to GitHub:
+
+```powershell
+cd "C:/Users/Usuario/Desktop/JE AUTOMOVEIS"
+git add scripts.js
+git commit -m "chore: set BACKEND_URL to Render backend https://je-automoveis.onrender.com"
+git push origin main
+```
+
+If you need to push a new branch or create the remote first, use the commands in `push-instructions.txt`.

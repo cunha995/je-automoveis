@@ -1,0 +1,48 @@
+Git push e deploy — instruções
+
+1) Inicializar e enviar para GitHub (sem `gh`):
+
+```powershell
+cd "C:/Users/Usuario/Desktop/JE AUTOMOVEIS"
+git init
+git add .
+git commit -m "Initial: frontend skeleton + backend for contact (Render-ready)"
+git branch -M main
+git remote add origin https://github.com/<SEU_USUARIO>/je-automoveis.git
+git push -u origin main
+```
+
+Substitua `<SEU_USUARIO>` pelo seu usuário GitHub.
+
+2) Com GitHub CLI (`gh`) (opcional):
+
+```powershell
+cd "C:/Users/Usuario/Desktop/JE AUTOMOVEIS"
+git init
+git add .
+git commit -m "Initial: frontend skeleton + backend for contact (Render-ready)"
+git branch -M main
+gh repo create je-automoveis --public --source=. --remote=origin --push
+```
+
+3) Deploy do backend no Render (passos resumidos):
+- Crie um repositório no GitHub e faça push (passo 1 ou 2).
+- No Render, clique em New → Web Service → Connect to GitHub → selecione `je-automoveis` repo.
+- Em Root Directory coloque `backend`.
+- Build Command: `npm install`  
+- Start Command: `npm start`
+- Environment: adicione variáveis conforme `backend/.env.example` (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, TO_EMAIL, FROM_EMAIL).
+- Deploy: Render fará o build e fornecerá uma URL pública (ex: https://je-backend.onrender.com).
+
+4) Atualizar frontend com a URL do backend:
+- Abra `scripts.js` e defina `BACKEND_URL` com a URL do serviço Render sem barra final. Ex: `const BACKEND_URL = 'https://je-backend.onrender.com';`
+- Faça commit e push das mudanças no frontend.
+
+5) Deploy do frontend (opções rápidas):
+- Netlify: conectar ao repo, build command vazio (site estático), publish directory -> `/`.
+- Vercel: conectar ao repo e seguir wizard (site estático).
+- GitHub Pages: nas configurações do repositório -> Pages -> Source: `main` branch -> root.
+
+Observações finais:
+- Se não quiser configurar SMTP, é possível usar SendGrid ou outro provedor e preencher `backend/.env.example` com as credenciais.
+- Precisa de ajuda para criar o repositório no GitHub agora? Posso gerar os comandos exatos com seu nome de usuário.
