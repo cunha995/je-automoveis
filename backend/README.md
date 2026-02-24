@@ -19,8 +19,8 @@ Painel administrativo de veículos
 O projeto agora possui painel em `/admin` para cadastrar, editar e excluir veículos com foto.
 
 Credenciais padrão (altere em produção):
-- `ADMIN_USERNAME=admin`
-- `ADMIN_PASSWORD=admin123`
+- `ADMIN_USERNAME=je2026`
+- `ADMIN_PASSWORD=Je2026`
 
 Recomendado no Render:
 1. Em Environment, definir `ADMIN_USERNAME` e `ADMIN_PASSWORD` com valores fortes.

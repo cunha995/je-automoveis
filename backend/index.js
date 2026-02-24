@@ -20,8 +20,8 @@ const DATA_DIR = path.join(__dirname, 'data');
 const VEHICLES_FILE = path.join(DATA_DIR, 'vehicles.json');
 const UPLOADS_DIR = path.join(FRONTEND_ROOT, 'uploads');
 
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'je2026';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Je2026';
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
 const adminSessions = new Map();
 
@@ -213,7 +213,7 @@ app.post('/api/admin/login', (req, res) => {
     ok: true,
     token,
     expiresAt,
-    usingDefaultPassword: ADMIN_PASSWORD === 'admin123',
+    usingDefaultPassword: ADMIN_PASSWORD === 'Je2026',
   });
 });
 
