@@ -331,6 +331,10 @@ vehicleForm.addEventListener('submit', async (event) => {
     headers: authHeaders(),
     body: new FormData(vehicleForm),
   });
+  if (handleUnauthorized(res)) {
+    alert('Sessão expirada. Faça login novamente para salvar as alterações.');
+    return;
+  }
   const data = await res.json();
   if (!res.ok) {
     setMessage(vehicleMessage, data.error || 'Falha ao salvar veículo.', true);
@@ -351,6 +355,10 @@ sellerForm.addEventListener('submit', async (event) => {
     headers: authHeaders(),
     body: new FormData(sellerForm),
   });
+  if (handleUnauthorized(res)) {
+    alert('Sessão expirada. Faça login novamente para salvar as alterações.');
+    return;
+  }
   const data = await res.json();
   if (!res.ok) {
     setMessage(sellerMessage, data.error || 'Falha ao salvar vendedor.', true);
@@ -371,6 +379,10 @@ bannerForm.addEventListener('submit', async (event) => {
     headers: authHeaders(),
     body: new FormData(bannerForm),
   });
+  if (handleUnauthorized(res)) {
+    alert('Sessão expirada. Faça login novamente para salvar as alterações.');
+    return;
+  }
   const data = await res.json();
   if (!res.ok) {
     setMessage(bannerMessage, data.error || 'Falha ao salvar banner.', true);
@@ -402,6 +414,10 @@ settingsForm.addEventListener('submit', async (event) => {
     },
     body: JSON.stringify(payload),
   });
+  if (handleUnauthorized(res)) {
+    alert('Sessão expirada. Faça login novamente para salvar as alterações.');
+    return;
+  }
 
   const data = await res.json();
   if (!res.ok) {
