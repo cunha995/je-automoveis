@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-label="Veículo em destaque 2">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1f2731"/>
+      <stop offset="100%" stop-color="#3a4657"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="700" fill="url(#bg2)"/>
+  <text x="50%" y="42%" text-anchor="middle" fill="#ffffff" font-size="56" font-family="Arial, Helvetica, sans-serif">JE Automóveis</text>
+  <text x="50%" y="54%" text-anchor="middle" fill="#e5e5e5" font-size="34" font-family="Arial, Helvetica, sans-serif">Foto do veículo 02</text>
+  <text x="50%" y="63%" text-anchor="middle" fill="#cfcfcf" font-size="24" font-family="Arial, Helvetica, sans-serif">Substitua por foto real da garagem</text>
+</svg>
