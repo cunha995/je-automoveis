@@ -292,6 +292,7 @@ async function loadSiteSettings() {
     : '';
   settingsForm.elements.storeAddress.value = settings.storeAddress || '';
   settingsForm.elements.storePhone.value = settings.storePhone || '';
+  settingsForm.elements.storeWhatsapp.value = settings.storeWhatsapp || '';
   settingsForm.elements.storeEmail.value = settings.storeEmail || '';
 }
 
@@ -389,6 +390,7 @@ settingsForm.addEventListener('submit', async (event) => {
     aboutHighlights: settingsForm.elements.aboutHighlights.value,
     storeAddress: settingsForm.elements.storeAddress.value,
     storePhone: settingsForm.elements.storePhone.value,
+    storeWhatsapp: settingsForm.elements.storeWhatsapp.value,
     storeEmail: settingsForm.elements.storeEmail.value,
   };
 

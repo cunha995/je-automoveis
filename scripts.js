@@ -5,7 +5,7 @@
 // const BACKEND_URL = 'https://je-backend.onrender.com';
 // If left empty the frontend will POST to a relative `/contact` path.
 const BACKEND_URL = 'https://je-automoveis.onrender.com';
-const WHATSAPP_NUMBER = '5500000000000';
+let STORE_WHATSAPP_NUMBER = '5500000000000';
 
 const fallbackVehicles = [
   {
@@ -81,6 +81,7 @@ const fallbackBanners = [
 
 let currentBannerIndex = 0;
 let bannerIntervalId = null;
+let currentVehiclesCache = [];
 
 const fallbackSiteSettings = {
   aboutTitle: 'Sobre a JE Automóveis',
@@ -92,6 +93,7 @@ const fallbackSiteSettings = {
   ],
   storeAddress: 'Rua Exemplo, 123 — Sua Cidade',
   storePhone: '(00) 0 0000-0000',
+  storeWhatsapp: '5500000000000',
   storeEmail: 'contato@jeautomoveis.com',
 };
 
@@ -116,18 +118,19 @@ function toAbsoluteImage(pathValue, fallbackTitle = 'JE Automóveis') {
 }
 
 function renderVehicles(vehicles) {
+  currentVehiclesCache = Array.isArray(vehicles) ? vehicles : [];
   const grid = document.getElementById('vehicleGrid');
   if (!grid) return;
 
-  if (!vehicles.length) {
+  if (!currentVehiclesCache.length) {
     grid.innerHTML = '<p>Nenhum veículo cadastrado no momento.</p>';
     return;
   }
 
-  grid.innerHTML = vehicles.map((vehicle) => {
+  grid.innerHTML = currentVehiclesCache.map((vehicle) => {
     const isSold = vehicle.sold === true || /vendid/i.test(String(vehicle.status || ''));
     const message = encodeURIComponent(`Olá! Tenho interesse no veículo ${vehicle.model} ${vehicle.year}.`);
-    const whatsappLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
+    const whatsappLink = `https://wa.me/${STORE_WHATSAPP_NUMBER}?text=${message}`;
     const fallback = createFallbackImage(`${vehicle.model} ${vehicle.year}`);
 
     return `
@@ -168,7 +171,7 @@ function renderSellers(sellers) {
   }
 
   grid.innerHTML = sellers.map((seller) => {
-    const sellerPhone = (seller.whatsapp || WHATSAPP_NUMBER).replace(/\D/g, '');
+    const sellerPhone = (seller.whatsapp || STORE_WHATSAPP_NUMBER).replace(/\D/g, '');
     const text = encodeURIComponent(`Olá ${seller.name}, vi seu contato no site da JE Automóveis e quero mais informações.`);
     const link = `https://wa.me/${sellerPhone}?text=${text}`;
     const fallback = createFallbackImage(seller.name || 'Vendedor');
@@ -275,12 +278,16 @@ function renderSiteSettings(settings) {
   const aboutHighlights = document.getElementById('aboutHighlights');
   const storeAddress = document.getElementById('storeAddress');
   const storePhone = document.getElementById('storePhone');
+  const storeWhatsapp = document.getElementById('storeWhatsapp');
   const storeEmail = document.getElementById('storeEmail');
+
+  STORE_WHATSAPP_NUMBER = String(safe.storeWhatsapp || '').replace(/\D/g, '') || '5500000000000';
 
   if (aboutTitle) aboutTitle.textContent = safe.aboutTitle;
   if (aboutText) aboutText.textContent = safe.aboutText;
   if (storeAddress) storeAddress.textContent = safe.storeAddress;
   if (storePhone) storePhone.textContent = safe.storePhone;
+  if (storeWhatsapp) storeWhatsapp.textContent = STORE_WHATSAPP_NUMBER;
   if (storeEmail) storeEmail.textContent = safe.storeEmail;
 
   if (aboutHighlights) {
@@ -290,6 +297,10 @@ function renderSiteSettings(settings) {
     aboutHighlights.innerHTML = highlights
       .map((item) => `<div class="highlight-item">✓ ${item}</div>`)
       .join('');
+  }
+
+  if (currentVehiclesCache.length) {
+    renderVehicles(currentVehiclesCache);
   }
 }
 

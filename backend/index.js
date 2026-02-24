@@ -67,6 +67,7 @@ function defaultSiteSettings() {
     ],
     storeAddress: 'Rua Exemplo, 123 — Sua Cidade',
     storePhone: '(00) 0 0000-0000',
+    storeWhatsapp: '5500000000000',
     storeEmail: 'contato@jeautomoveis.com',
   };
 }
@@ -356,6 +357,7 @@ app.put('/api/admin/site-settings', requireAdmin, (req, res) => {
     aboutHighlights,
     storeAddress,
     storePhone,
+    storeWhatsapp,
     storeEmail,
   } = req.body || {};
 
@@ -372,6 +374,7 @@ app.put('/api/admin/site-settings', requireAdmin, (req, res) => {
     aboutHighlights: normalizedHighlights,
     storeAddress: storeAddress !== undefined ? String(storeAddress).trim() : undefined,
     storePhone: storePhone !== undefined ? String(storePhone).trim() : undefined,
+    storeWhatsapp: storeWhatsapp !== undefined ? String(storeWhatsapp).trim() : undefined,
     storeEmail: storeEmail !== undefined ? String(storeEmail).trim() : undefined,
   });
 
