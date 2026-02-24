@@ -82,6 +82,7 @@ const fallbackBanners = [
 let currentBannerIndex = 0;
 let bannerIntervalId = null;
 let currentVehiclesCache = [];
+let vehicleCarouselTimers = [];
 
 const fallbackSiteSettings = {
   aboutTitle: 'Sobre a JE Automóveis',
@@ -134,8 +135,35 @@ function normalizeVehicleMedia(vehicle) {
   return [];
 }
 
+function clearVehicleCarousels() {
+  vehicleCarouselTimers.forEach((timerId) => clearInterval(timerId));
+  vehicleCarouselTimers = [];
+}
+
+function startVehicleCarousels() {
+  clearVehicleCarousels();
+
+  const wrappers = document.querySelectorAll('[data-vehicle-carousel]');
+  wrappers.forEach((wrapper) => {
+    const track = wrapper.querySelector('.vehicle-photo-track');
+    if (!track) return;
+
+    const slides = track.querySelectorAll('.vehicle-photo-slide');
+    if (slides.length <= 1) return;
+
+    let currentIndex = 0;
+    const timer = setInterval(() => {
+      currentIndex = (currentIndex + 1) % slides.length;
+      track.style.transform = `translateX(-${currentIndex * 100}%)`;
+    }, 3200);
+
+    vehicleCarouselTimers.push(timer);
+  });
+}
+
 function renderVehicles(vehicles) {
   currentVehiclesCache = Array.isArray(vehicles) ? vehicles : [];
+  clearVehicleCarousels();
   const grid = document.getElementById('vehicleGrid');
   if (!grid) return;
 
@@ -150,23 +178,26 @@ function renderVehicles(vehicles) {
     const whatsappLink = `https://wa.me/${STORE_WHATSAPP_NUMBER}?text=${message}`;
     const fallback = createFallbackImage(`${vehicle.model} ${vehicle.year}`);
     const media = normalizeVehicleMedia(vehicle);
-    const mainMedia = media[0];
+    const imageMedia = media.filter((item) => item.mediaType !== 'video');
+    const videoMedia = media.filter((item) => item.mediaType === 'video');
 
-    const mainMediaHtml = !mainMedia
-      ? `<img src="${fallback}" alt="${vehicle.model}" class="vehicle-photo">`
-      : mainMedia.mediaType === 'video'
-        ? `<video src="${toAbsoluteImage(mainMedia.url, `${vehicle.model} ${vehicle.year}`)}" class="vehicle-photo" controls preload="metadata" playsinline></video>`
-        : `<img src="${toAbsoluteImage(mainMedia.url, `${vehicle.model} ${vehicle.year}`)}" alt="${vehicle.model}" class="vehicle-photo" onerror="this.onerror=null;this.src='${fallback}'">`;
+    const mainMediaHtml = imageMedia.length
+      ? `<div class="vehicle-photo-track">${imageMedia.map((item) => `
+          <img src="${toAbsoluteImage(item.url, `${vehicle.model} ${vehicle.year}`)}" alt="${vehicle.model}" class="vehicle-photo vehicle-photo-slide" onerror="this.onerror=null;this.src='${fallback}'">
+        `).join('')}</div>`
+      : videoMedia[0]
+        ? `<video src="${toAbsoluteImage(videoMedia[0].url, `${vehicle.model} ${vehicle.year}`)}" class="vehicle-photo" controls preload="metadata" playsinline></video>`
+        : `<img src="${fallback}" alt="${vehicle.model}" class="vehicle-photo">`;
 
     const thumbsHtml = media.length > 1
-      ? `<div class="vehicle-media-strip">${media.slice(1, 6).map((item) => item.mediaType === 'video'
+      ? `<div class="vehicle-media-strip">${media.slice(0, 6).map((item) => item.mediaType === 'video'
         ? `<span class="vehicle-media-chip">Vídeo</span>`
         : `<img src="${toAbsoluteImage(item.url, `${vehicle.model} ${vehicle.year}`)}" alt="Foto de ${vehicle.model}">`).join('')}</div>`
       : '';
 
     return `
       <article class="vehicle-card">
-        <div class="vehicle-photo-wrap">
+        <div class="vehicle-photo-wrap" data-vehicle-carousel>
           ${mainMediaHtml}
           ${isSold ? '<span class="sold-stamp">VENDIDO</span>' : ''}
         </div>
@@ -191,6 +222,8 @@ function renderVehicles(vehicles) {
       </article>
     `;
   }).join('');
+
+  startVehicleCarousels();
 }
 
 function renderSellers(sellers) {
