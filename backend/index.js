@@ -3,12 +3,15 @@ const cors = require('cors');
 const nodemailer = require('nodemailer');
 const sgMail = require('@sendgrid/mail');
 const dotenv = require('dotenv');
+const path = require('path');
 
 dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+const FRONTEND_ROOT = path.resolve(__dirname, '..');
 
 const PORT = process.env.PORT || 3000;
 
@@ -63,6 +66,19 @@ app.post('/contact', async (req, res) => {
   }
 });
 
-app.get('/', (req, res) => res.json({ ok: true, service: 'JE Automoveis Backend' }));
+app.get('/health', (req, res) => res.json({ ok: true, service: 'JE Automoveis Backend' }));
+
+app.use(express.static(FRONTEND_ROOT));
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(FRONTEND_ROOT, 'index.html'));
+});
+
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/contact') || req.path.startsWith('/health')) {
+    return res.status(404).json({ error: 'Rota não encontrada' });
+  }
+  return res.sendFile(path.join(FRONTEND_ROOT, 'index.html'));
+});
 
 app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
