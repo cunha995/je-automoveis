@@ -84,11 +84,11 @@ let bannerIntervalId = null;
 
 const fallbackSiteSettings = {
   aboutTitle: 'Sobre a JE Automóveis',
-  aboutText: 'Atendimento familiar com foco em transparência, veículos revisados e suporte completo no pré e pós-venda.',
+  aboutText: 'Atendimento familiar com foco em transparência para venda, troca e consignado de veículos.',
   aboutHighlights: [
-    'Veículos selecionados e revisados',
-    'Apoio na documentação',
-    'Atendimento rápido pelo WhatsApp',
+    'Venda de veículos selecionados',
+    'Troca com avaliação justa',
+    'Consignado com suporte completo',
   ],
   storeAddress: 'Rua Exemplo, 123 — Sua Cidade',
   storePhone: '(00) 0 0000-0000',
