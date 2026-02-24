@@ -12,6 +12,7 @@ html{scroll-behavior:smooth}
 .admin-side-nav hr{border:0;border-top:1px solid #e3e3e3;width:100%;margin:6px 0}
 .admin-form label{display:flex;flex-direction:column;gap:6px;font-weight:600;color:#333}
 .admin-form input,.admin-form select,.admin-form textarea{width:100%;padding:10px;border:1px solid #cdcdcd;border-radius:8px;background:#fff;font-family:inherit}
+.field-help{font-size:.85rem;color:#666;font-weight:500}
 .grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .full{grid-column:1/-1}
 .admin-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
@@ -21,6 +22,7 @@ html{scroll-behavior:smooth}
 .admin-item{display:grid;grid-template-columns:140px 1fr auto;gap:12px;align-items:center;border:1px solid #ececec;border-radius:10px;padding:10px}
 .admin-photo-wrap{position:relative;width:140px;height:88px}
 .admin-item img{width:100%;height:100%;object-fit:cover;border-radius:8px;background:#efefef}
+.admin-item video{width:100%;height:100%;object-fit:cover;border-radius:8px;background:#efefef}
 .admin-item h3{margin:0 0 6px 0;font-size:1rem}
 .admin-item p{margin:0;color:#555}
 .admin-item-actions{display:flex;flex-direction:column;gap:8px}

@@ -15,6 +15,7 @@ const sellerForm = document.getElementById('sellerForm');
 const sellerMessage = document.getElementById('sellerMessage');
 const adminSellerList = document.getElementById('adminSellerList');
 const cancelSellerEditBtn = document.getElementById('cancelSellerEditBtn');
+const sellerPhotoHint = document.getElementById('sellerPhotoHint');
 
 const bannerForm = document.getElementById('bannerForm');
 const bannerMessage = document.getElementById('bannerMessage');
@@ -61,6 +62,35 @@ function toAbsoluteImage(pathValue) {
   return pathValue;
 }
 
+function normalizeVehicleMedia(vehicle) {
+  if (Array.isArray(vehicle?.media) && vehicle.media.length) {
+    return vehicle.media
+      .map((item) => ({
+        url: String(item?.url || item?.image || '').trim(),
+        mediaType: item?.mediaType === 'video' ? 'video' : 'image',
+      }))
+      .filter((item) => item.url);
+  }
+
+  if (vehicle?.image) {
+    return [{ url: String(vehicle.image), mediaType: 'image' }];
+  }
+
+  return [];
+}
+
+function renderAdminVehicleMedia(vehicle) {
+  const media = normalizeVehicleMedia(vehicle);
+  const main = media[0];
+  if (!main) return '<img src="images/carros/carro-01.svg" alt="Sem mídia">';
+
+  if (main.mediaType === 'video') {
+    return `<video src="${toAbsoluteImage(main.url)}" muted playsinline controls preload="metadata"></video>`;
+  }
+
+  return `<img src="${toAbsoluteImage(main.url)}" alt="${vehicle.model}">`;
+}
+
 function formatPrice(price) {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -77,6 +107,7 @@ function clearVehicleForm() {
 function clearSellerForm() {
   sellerForm.reset();
   sellerForm.elements.id.value = '';
+  if (sellerPhotoHint) sellerPhotoHint.textContent = '';
 }
 
 function clearBannerForm() {
@@ -107,13 +138,14 @@ async function loadVehicles() {
   adminVehicleList.innerHTML = vehicles.map((vehicle) => `
     <article class="admin-item">
       <div class="admin-photo-wrap">
-        <img src="${toAbsoluteImage(vehicle.image)}" alt="${vehicle.model}">
+        ${renderAdminVehicleMedia(vehicle)}
         ${vehicle.sold ? '<span class="sold-stamp">VENDIDO</span>' : ''}
       </div>
       <div>
         <h3>${vehicle.model} (${vehicle.year})</h3>
         <p>${vehicle.km || 'Sem KM informado'} · ${vehicle.fuel || 'Combustível não informado'} · ${vehicle.transmission || 'Manual'}</p>
         <p><strong>${formatPrice(vehicle.price)}</strong> · ${vehicle.sold ? 'Vendido' : (vehicle.status || 'Disponível')}</p>
+        <p>Mídias: ${normalizeVehicleMedia(vehicle).length}</p>
       </div>
       <div class="admin-item-actions">
         <button class="btn-edit" data-edit-vehicle="${vehicle.id}">Editar</button>
@@ -194,6 +226,11 @@ async function loadSellers() {
       sellerForm.elements.whatsapp.value = current.whatsapp || '';
       sellerForm.elements.status.value = current.status || '';
       sellerForm.elements.bio.value = current.bio || '';
+      if (sellerPhotoHint) {
+        sellerPhotoHint.textContent = current.image
+          ? 'Foto atual carregada. Para trocar, selecione um novo arquivo no campo “Trocar foto do vendedor”.'
+          : 'Este vendedor ainda não tem foto. Selecione um arquivo no campo “Trocar foto do vendedor”.';
+      }
       window.scrollTo({ top: sellerForm.offsetTop - 40, behavior: 'smooth' });
     });
   });
@@ -326,10 +363,11 @@ vehicleForm.addEventListener('submit', async (event) => {
   const id = vehicleForm.elements.id.value;
   const endpoint = id ? `${API_BASE}/api/admin/vehicles/${id}` : `${API_BASE}/api/admin/vehicles`;
   const method = id ? 'PUT' : 'POST';
+  const formData = new FormData(vehicleForm);
   const res = await fetch(endpoint, {
     method,
     headers: authHeaders(),
-    body: new FormData(vehicleForm),
+    body: formData,
   });
   if (handleUnauthorized(res)) {
     alert('Sessão expirada. Faça login novamente para salvar as alterações.');

@@ -93,8 +93,11 @@
           <label>Preço (R$)
             <input id="vehicle-price" type="number" name="price" required min="1" step="1" placeholder="68900">
           </label>
-          <label>Foto do veículo
-            <input type="file" name="photo" accept="image/*">
+          <label>Fotos do veículo (pode selecionar várias)
+            <input type="file" name="photos" accept="image/*" multiple>
+          </label>
+          <label>Vídeos do veículo (opcional)
+            <input type="file" name="videos" accept="video/*" multiple>
           </label>
           <div class="full admin-actions">
             <button class="btn-primary" type="submit">Salvar veículo</button>
@@ -127,9 +130,11 @@
           <label>Status
             <input type="text" name="status" placeholder="Ex.: Online">
           </label>
-          <label>Foto do vendedor
-            <input type="file" name="photo" accept="image/*">
+          <label class="full">Trocar foto do vendedor (opcional na edição)
+            <input id="seller-photo" type="file" name="photo" accept="image/*">
+            <small class="field-help">Ao editar um vendedor, selecione uma nova foto aqui para substituir a atual.</small>
           </label>
+          <p id="sellerPhotoHint" class="admin-message full"></p>
           <label class="full">Bio
             <input type="text" name="bio" placeholder="Ex.: Especialista em seminovos e financiamento.">
           </label>

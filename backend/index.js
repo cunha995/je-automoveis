@@ -172,6 +172,31 @@ async function uploadToCloudinary(file) {
   });
 }
 
+function detectMediaType(file) {
+  const mimetype = String(file?.mimetype || '').toLowerCase();
+  if (mimetype.startsWith('video/')) return 'video';
+  return 'image';
+}
+
+async function uploadToCloudinaryMedia(file, resourceType = detectMediaType(file)) {
+  if (!file || !file.buffer) return null;
+
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: CLOUDINARY_FOLDER,
+        resource_type: resourceType,
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        return resolve(result);
+      }
+    );
+
+    stream.end(file.buffer);
+  });
+}
+
 function saveLocalImage(file) {
   if (!file || !file.buffer) return null;
   ensureStorage();
@@ -187,39 +212,144 @@ function saveLocalImage(file) {
   };
 }
 
-async function persistImage(file) {
+function saveLocalMedia(file, mediaType = detectMediaType(file)) {
+  if (!file || !file.buffer) return null;
+  ensureStorage();
+
+  const extFromOriginal = path.extname(file.originalname || '').toLowerCase();
+  const allowedImageExt = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+  const allowedVideoExt = ['.mp4', '.webm', '.mov', '.m4v', '.ogg'];
+  const safeExt = mediaType === 'video'
+    ? (allowedVideoExt.includes(extFromOriginal) ? extFromOriginal : '.mp4')
+    : (allowedImageExt.includes(extFromOriginal) ? extFromOriginal : '.jpg');
+
+  const fileName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${safeExt}`;
+  const outputPath = path.join(UPLOADS_DIR, fileName);
+  fs.writeFileSync(outputPath, file.buffer);
+
+  return {
+    url: `/uploads/${fileName}`,
+    storage: 'local',
+    publicId: null,
+    mediaType,
+  };
+}
+
+function normalizeVehicleMedia(vehicle) {
+  const fallbackStorage = vehicle.imageStorage || (String(vehicle.image || '').startsWith('/uploads/') ? 'local' : 'external');
+  const fromLegacyImage = vehicle.image
+    ? [{
+      url: vehicle.image,
+      storage: fallbackStorage,
+      publicId: vehicle.imagePublicId || null,
+      mediaType: 'image',
+    }]
+    : [];
+
+  const normalizedMedia = (Array.isArray(vehicle.media) && vehicle.media.length ? vehicle.media : fromLegacyImage)
+    .map((item) => ({
+      url: String(item?.url || item?.image || '').trim(),
+      storage: item?.storage || item?.imageStorage || (String(item?.url || item?.image || '').startsWith('/uploads/') ? 'local' : 'external'),
+      publicId: item?.publicId || item?.imagePublicId || null,
+      mediaType: item?.mediaType === 'video' ? 'video' : 'image',
+    }))
+    .filter((item) => item.url);
+
+  const firstImage = normalizedMedia.find((item) => item.mediaType === 'image') || normalizedMedia[0] || null;
+
+  return {
+    ...vehicle,
+    media: normalizedMedia,
+    image: firstImage ? firstImage.url : '',
+    imageStorage: firstImage ? firstImage.storage : 'none',
+    imagePublicId: firstImage ? firstImage.publicId : null,
+  };
+}
+
+function getVehicleMediaFiles(req) {
+  const files = req.files || {};
+  const photos = [
+    ...(Array.isArray(files.photos) ? files.photos : []),
+    ...(Array.isArray(files.photo) ? files.photo : []),
+  ];
+  const videos = Array.isArray(files.videos) ? files.videos : [];
+  return { photos, videos };
+}
+
+async function persistVehicleMedia(req) {
+  const { photos, videos } = getVehicleMediaFiles(req);
+  const persistedPhotos = await Promise.all(photos.map((file) => persistUploadedFile(file, 'image')));
+  const persistedVideos = await Promise.all(videos.map((file) => persistUploadedFile(file, 'video')));
+  return [...persistedPhotos, ...persistedVideos].filter(Boolean);
+}
+
+async function removeStoredMedia(media) {
+  if (!media || !media.url) return;
+
+  const storage = media.storage || (String(media.url).startsWith('/uploads/') ? 'local' : 'external');
+
+  if (storage === 'cloudinary' && media.publicId && hasCloudinaryConfig) {
+    try {
+      await cloudinary.uploader.destroy(media.publicId, { resource_type: media.mediaType === 'video' ? 'video' : 'image' });
+    } catch (err) {
+      console.warn('Falha ao remover mídia no Cloudinary:', err.message);
+    }
+    return;
+  }
+
+  if (storage === 'local' && String(media.url).startsWith('/uploads/')) {
+    const mediaPath = path.join(FRONTEND_ROOT, media.url);
+    if (fs.existsSync(mediaPath)) fs.unlinkSync(mediaPath);
+  }
+}
+
+async function removeVehicleStoredMedia(vehicle) {
+  const normalized = normalizeVehicleMedia(vehicle);
+  for (const media of normalized.media) {
+    await removeStoredMedia(media);
+  }
+}
+
+async function persistUploadedFile(file, forcedMediaType) {
   if (!file) return null;
 
+  const mediaType = forcedMediaType || detectMediaType(file);
+
   if (hasCloudinaryConfig) {
-    const result = await uploadToCloudinary(file);
+    const result = await uploadToCloudinaryMedia(file, mediaType);
     return {
-      image: result.secure_url,
-      imageStorage: 'cloudinary',
-      imagePublicId: result.public_id,
+      url: result.secure_url,
+      storage: 'cloudinary',
+      publicId: result.public_id,
+      mediaType,
     };
   }
 
-  return saveLocalImage(file);
+  return saveLocalMedia(file, mediaType);
+}
+
+async function persistImage(file) {
+  if (!file) return null;
+
+  const media = await persistUploadedFile(file, 'image');
+  return media
+    ? {
+      image: media.url,
+      imageStorage: media.storage,
+      imagePublicId: media.publicId,
+    }
+    : null;
 }
 
 async function removeStoredImage(vehicle) {
   if (!vehicle || !vehicle.image) return;
 
-  const storage = vehicle.imageStorage || (String(vehicle.image).startsWith('/uploads/') ? 'local' : 'external');
-
-  if (storage === 'cloudinary' && vehicle.imagePublicId && hasCloudinaryConfig) {
-    try {
-      await cloudinary.uploader.destroy(vehicle.imagePublicId, { resource_type: 'image' });
-    } catch (err) {
-      console.warn('Falha ao remover imagem no Cloudinary:', err.message);
-    }
-    return;
-  }
-
-  if (storage === 'local' && String(vehicle.image).startsWith('/uploads/')) {
-    const imgPath = path.join(FRONTEND_ROOT, vehicle.image);
-    if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
-  }
+  await removeStoredMedia({
+    url: vehicle.image,
+    storage: vehicle.imageStorage,
+    publicId: vehicle.imagePublicId,
+    mediaType: 'image',
+  });
 }
 
 function removeExpiredSessions() {
@@ -258,6 +388,16 @@ const upload = multer({
   },
 });
 
+const vehicleUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const type = String(file.mimetype || '');
+    if (type.startsWith('image/') || type.startsWith('video/')) return cb(null, true);
+    return cb(new Error('Arquivo deve ser imagem ou vídeo'));
+  },
+});
+
 function createTransporter() {
   if (!process.env.SMTP_HOST) return null;
   return nodemailer.createTransport({
@@ -279,10 +419,13 @@ function sendWithSendGrid({ to, from, subject, text }) {
 }
 
 app.get('/api/vehicles', (_req, res) => {
-  const vehicles = readVehicles().map((vehicle) => ({
-    ...vehicle,
-    sold: vehicle.sold === true || /vendid/i.test(String(vehicle.status || '')),
-  }));
+  const vehicles = readVehicles().map((vehicle) => {
+    const normalized = normalizeVehicleMedia(vehicle);
+    return {
+      ...normalized,
+      sold: normalized.sold === true || /vendid/i.test(String(normalized.status || '')),
+    };
+  });
   res.json({ ok: true, vehicles });
 });
 
@@ -328,10 +471,13 @@ app.post('/api/admin/logout', requireAdmin, (req, res) => {
 });
 
 app.get('/api/admin/vehicles', requireAdmin, (_req, res) => {
-  const vehicles = readVehicles().map((vehicle) => ({
-    ...vehicle,
-    sold: vehicle.sold === true || /vendid/i.test(String(vehicle.status || '')),
-  }));
+  const vehicles = readVehicles().map((vehicle) => {
+    const normalized = normalizeVehicleMedia(vehicle);
+    return {
+      ...normalized,
+      sold: normalized.sold === true || /vendid/i.test(String(normalized.status || '')),
+    };
+  });
   return res.json({ ok: true, vehicles });
 });
 
@@ -381,21 +527,27 @@ app.put('/api/admin/site-settings', requireAdmin, (req, res) => {
   return res.json({ ok: true, settings });
 });
 
-app.post('/api/admin/vehicles', requireAdmin, upload.single('photo'), async (req, res) => {
+app.post('/api/admin/vehicles', requireAdmin, vehicleUpload.fields([
+  { name: 'photos', maxCount: 12 },
+  { name: 'videos', maxCount: 4 },
+  { name: 'photo', maxCount: 1 },
+]), async (req, res) => {
   const { model, year, km, fuel, price, status, transmission, sold } = req.body || {};
   if (!model || !year || !price) {
     return res.status(400).json({ error: 'Campos obrigatórios: model, year, price' });
   }
 
-  let imageData = null;
+  let media = [];
   try {
-    imageData = await persistImage(req.file);
+    media = await persistVehicleMedia(req);
   } catch (err) {
-    console.error('Erro ao salvar imagem:', err);
-    return res.status(500).json({ error: 'Falha ao salvar imagem do veículo' });
+    console.error('Erro ao salvar mídia:', err);
+    return res.status(500).json({ error: 'Falha ao salvar mídias do veículo' });
   }
 
   const isSold = String(sold || 'false') === 'true';
+
+  const firstImage = media.find((item) => item.mediaType === 'image') || media[0] || null;
 
   const vehicle = {
     id: crypto.randomUUID(),
@@ -407,9 +559,10 @@ app.post('/api/admin/vehicles', requireAdmin, upload.single('photo'), async (req
     price: Number(price),
     status: isSold ? 'Vendido' : (String(status || 'Disponível').trim() || 'Disponível'),
     sold: isSold,
-    image: imageData ? imageData.image : '',
-    imageStorage: imageData ? imageData.imageStorage : 'none',
-    imagePublicId: imageData ? imageData.imagePublicId : null,
+    image: firstImage ? firstImage.url : '',
+    imageStorage: firstImage ? firstImage.storage : 'none',
+    imagePublicId: firstImage ? firstImage.publicId : null,
+    media,
     createdAt: new Date().toISOString(),
   };
 
@@ -420,7 +573,11 @@ app.post('/api/admin/vehicles', requireAdmin, upload.single('photo'), async (req
   return res.status(201).json({ ok: true, vehicle });
 });
 
-app.put('/api/admin/vehicles/:id', requireAdmin, upload.single('photo'), async (req, res) => {
+app.put('/api/admin/vehicles/:id', requireAdmin, vehicleUpload.fields([
+  { name: 'photos', maxCount: 12 },
+  { name: 'videos', maxCount: 4 },
+  { name: 'photo', maxCount: 1 },
+]), async (req, res) => {
   const vehicles = readVehicles();
   const index = vehicles.findIndex((item) => item.id === req.params.id);
   if (index < 0) return res.status(404).json({ error: 'Veículo não encontrado' });
@@ -448,16 +605,19 @@ app.put('/api/admin/vehicles/:id', requireAdmin, upload.single('photo'), async (
     updatedAt: new Date().toISOString(),
   };
 
-  if (req.file) {
+  const { photos, videos } = getVehicleMediaFiles(req);
+  if (photos.length || videos.length) {
     try {
-      await removeStoredImage(current);
-      const imageData = await persistImage(req.file);
-      updated.image = imageData ? imageData.image : current.image;
-      updated.imageStorage = imageData ? imageData.imageStorage : current.imageStorage;
-      updated.imagePublicId = imageData ? imageData.imagePublicId : current.imagePublicId;
+      await removeVehicleStoredMedia(current);
+      const media = await persistVehicleMedia(req);
+      const firstImage = media.find((item) => item.mediaType === 'image') || media[0] || null;
+      updated.media = media;
+      updated.image = firstImage ? firstImage.url : '';
+      updated.imageStorage = firstImage ? firstImage.storage : 'none';
+      updated.imagePublicId = firstImage ? firstImage.publicId : null;
     } catch (err) {
-      console.error('Erro ao atualizar imagem:', err);
-      return res.status(500).json({ error: 'Falha ao atualizar imagem do veículo' });
+      console.error('Erro ao atualizar mídia:', err);
+      return res.status(500).json({ error: 'Falha ao atualizar mídias do veículo' });
     }
   }
 
@@ -475,9 +635,9 @@ app.delete('/api/admin/vehicles/:id', requireAdmin, async (req, res) => {
   writeVehicles(vehicles);
 
   try {
-    await removeStoredImage(removed);
+    await removeVehicleStoredMedia(removed);
   } catch (err) {
-    console.warn('Falha ao remover imagem ao excluir veículo:', err.message);
+    console.warn('Falha ao remover mídias ao excluir veículo:', err.message);
   }
 
   return res.json({ ok: true });
