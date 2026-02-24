@@ -27,6 +27,18 @@ Recomendado no Render:
 2. Fazer deploy após salvar as variáveis.
 3. Acessar `https://SEU-SERVICO.onrender.com/admin`.
 
+Persistência de fotos com Cloudinary (recomendado)
+---------------------------------------------------
+Para não perder fotos após restart/redeploy, configure Cloudinary no Render:
+
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET`
+- `CLOUDINARY_FOLDER` (opcional, padrão: `je-automoveis`)
+
+Quando essas variáveis estão configuradas, o painel `/admin` salva imagens direto no Cloudinary.
+Se não estiverem, o sistema usa `uploads/` local (temporário em ambientes free).
+
 SendGrid quick setup:
 1. Create a SendGrid account and generate an API Key (Full Access to Mail Send).
 2. Add `SENDGRID_API_KEY` to Render's Environment variables for the service.

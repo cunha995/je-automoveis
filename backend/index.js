@@ -7,6 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const multer = require('multer');
+const cloudinary = require('cloudinary').v2;
 
 dotenv.config();
 
@@ -24,6 +25,15 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
 const adminSessions = new Map();
 
+const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || '';
+const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY || '';
+const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET || '';
+const CLOUDINARY_FOLDER = process.env.CLOUDINARY_FOLDER || 'je-automoveis';
+
+const hasCloudinaryConfig =
+  !!process.env.CLOUDINARY_URL ||
+  (!!CLOUDINARY_CLOUD_NAME && !!CLOUDINARY_API_KEY && !!CLOUDINARY_API_SECRET);
+
 const PORT = process.env.PORT || 3000;
 
 function ensureStorage() {
@@ -32,6 +42,15 @@ function ensureStorage() {
   if (!fs.existsSync(VEHICLES_FILE)) {
     fs.writeFileSync(VEHICLES_FILE, '[]', 'utf-8');
   }
+}
+
+if (hasCloudinaryConfig) {
+  cloudinary.config({
+    cloud_name: CLOUDINARY_CLOUD_NAME,
+    api_key: CLOUDINARY_API_KEY,
+    api_secret: CLOUDINARY_API_SECRET,
+    secure: true,
+  });
 }
 
 function readVehicles() {
@@ -48,6 +67,75 @@ function readVehicles() {
 function writeVehicles(vehicles) {
   ensureStorage();
   fs.writeFileSync(VEHICLES_FILE, JSON.stringify(vehicles, null, 2), 'utf-8');
+}
+
+async function uploadToCloudinary(file) {
+  if (!file || !file.buffer) return null;
+
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: CLOUDINARY_FOLDER,
+        resource_type: 'image',
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        return resolve(result);
+      }
+    );
+
+    stream.end(file.buffer);
+  });
+}
+
+function saveLocalImage(file) {
+  if (!file || !file.buffer) return null;
+  ensureStorage();
+  const extFromOriginal = path.extname(file.originalname || '').toLowerCase();
+  const safeExt = ['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(extFromOriginal) ? extFromOriginal : '.jpg';
+  const fileName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${safeExt}`;
+  const outputPath = path.join(UPLOADS_DIR, fileName);
+  fs.writeFileSync(outputPath, file.buffer);
+  return {
+    image: `/uploads/${fileName}`,
+    imageStorage: 'local',
+    imagePublicId: null,
+  };
+}
+
+async function persistImage(file) {
+  if (!file) return null;
+
+  if (hasCloudinaryConfig) {
+    const result = await uploadToCloudinary(file);
+    return {
+      image: result.secure_url,
+      imageStorage: 'cloudinary',
+      imagePublicId: result.public_id,
+    };
+  }
+
+  return saveLocalImage(file);
+}
+
+async function removeStoredImage(vehicle) {
+  if (!vehicle || !vehicle.image) return;
+
+  const storage = vehicle.imageStorage || (String(vehicle.image).startsWith('/uploads/') ? 'local' : 'external');
+
+  if (storage === 'cloudinary' && vehicle.imagePublicId && hasCloudinaryConfig) {
+    try {
+      await cloudinary.uploader.destroy(vehicle.imagePublicId, { resource_type: 'image' });
+    } catch (err) {
+      console.warn('Falha ao remover imagem no Cloudinary:', err.message);
+    }
+    return;
+  }
+
+  if (storage === 'local' && String(vehicle.image).startsWith('/uploads/')) {
+    const imgPath = path.join(FRONTEND_ROOT, vehicle.image);
+    if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+  }
 }
 
 function removeExpiredSessions() {
@@ -77,20 +165,8 @@ function requireAdmin(req, res, next) {
   return next();
 }
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    ensureStorage();
-    cb(null, UPLOADS_DIR);
-  },
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname || '').toLowerCase() || '.jpg';
-    const safeExt = ['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext) ? ext : '.jpg';
-    cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${safeExt}`);
-  },
-});
-
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 8 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if ((file.mimetype || '').startsWith('image/')) return cb(null, true);
@@ -152,10 +228,18 @@ app.get('/api/admin/vehicles', requireAdmin, (_req, res) => {
   return res.json({ ok: true, vehicles });
 });
 
-app.post('/api/admin/vehicles', requireAdmin, upload.single('photo'), (req, res) => {
+app.post('/api/admin/vehicles', requireAdmin, upload.single('photo'), async (req, res) => {
   const { model, year, km, fuel, price, status, transmission } = req.body || {};
   if (!model || !year || !price) {
     return res.status(400).json({ error: 'Campos obrigatórios: model, year, price' });
+  }
+
+  let imageData = null;
+  try {
+    imageData = await persistImage(req.file);
+  } catch (err) {
+    console.error('Erro ao salvar imagem:', err);
+    return res.status(500).json({ error: 'Falha ao salvar imagem do veículo' });
   }
 
   const vehicle = {
@@ -167,7 +251,9 @@ app.post('/api/admin/vehicles', requireAdmin, upload.single('photo'), (req, res)
     transmission: String(transmission || '').trim() || 'Manual',
     price: Number(price),
     status: String(status || 'Disponível').trim(),
-    image: req.file ? `/uploads/${req.file.filename}` : '',
+    image: imageData ? imageData.image : '',
+    imageStorage: imageData ? imageData.imageStorage : 'none',
+    imagePublicId: imageData ? imageData.imagePublicId : null,
     createdAt: new Date().toISOString(),
   };
 
@@ -178,7 +264,7 @@ app.post('/api/admin/vehicles', requireAdmin, upload.single('photo'), (req, res)
   return res.status(201).json({ ok: true, vehicle });
 });
 
-app.put('/api/admin/vehicles/:id', requireAdmin, upload.single('photo'), (req, res) => {
+app.put('/api/admin/vehicles/:id', requireAdmin, upload.single('photo'), async (req, res) => {
   const vehicles = readVehicles();
   const index = vehicles.findIndex((item) => item.id === req.params.id);
   if (index < 0) return res.status(404).json({ error: 'Veículo não encontrado' });
@@ -199,11 +285,16 @@ app.put('/api/admin/vehicles/:id', requireAdmin, upload.single('photo'), (req, r
   };
 
   if (req.file) {
-    if (current.image && current.image.startsWith('/uploads/')) {
-      const prev = path.join(FRONTEND_ROOT, current.image);
-      if (fs.existsSync(prev)) fs.unlinkSync(prev);
+    try {
+      await removeStoredImage(current);
+      const imageData = await persistImage(req.file);
+      updated.image = imageData ? imageData.image : current.image;
+      updated.imageStorage = imageData ? imageData.imageStorage : current.imageStorage;
+      updated.imagePublicId = imageData ? imageData.imagePublicId : current.imagePublicId;
+    } catch (err) {
+      console.error('Erro ao atualizar imagem:', err);
+      return res.status(500).json({ error: 'Falha ao atualizar imagem do veículo' });
     }
-    updated.image = `/uploads/${req.file.filename}`;
   }
 
   vehicles[index] = updated;
@@ -211,7 +302,7 @@ app.put('/api/admin/vehicles/:id', requireAdmin, upload.single('photo'), (req, r
   return res.json({ ok: true, vehicle: updated });
 });
 
-app.delete('/api/admin/vehicles/:id', requireAdmin, (req, res) => {
+app.delete('/api/admin/vehicles/:id', requireAdmin, async (req, res) => {
   const vehicles = readVehicles();
   const index = vehicles.findIndex((item) => item.id === req.params.id);
   if (index < 0) return res.status(404).json({ error: 'Veículo não encontrado' });
@@ -219,9 +310,10 @@ app.delete('/api/admin/vehicles/:id', requireAdmin, (req, res) => {
   const [removed] = vehicles.splice(index, 1);
   writeVehicles(vehicles);
 
-  if (removed.image && removed.image.startsWith('/uploads/')) {
-    const imgPath = path.join(FRONTEND_ROOT, removed.image);
-    if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+  try {
+    await removeStoredImage(removed);
+  } catch (err) {
+    console.warn('Falha ao remover imagem ao excluir veículo:', err.message);
   }
 
   return res.json({ ok: true });
