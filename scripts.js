@@ -7,7 +7,7 @@
 const BACKEND_URL = 'https://je-automoveis.onrender.com';
 const WHATSAPP_NUMBER = '5500000000000';
 
-const vehicles = [
+const fallbackVehicles = [
   {
     model: 'Volkswagen Gol 1.0',
     year: 2021,
@@ -59,7 +59,7 @@ function createFallbackImage(title) {
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 
-function renderVehicles() {
+function renderVehicles(vehicles) {
   const grid = document.getElementById('vehicleGrid');
   if (!grid) return;
 
@@ -85,7 +85,7 @@ function renderVehicles() {
             <span><strong>Ano:</strong> ${vehicle.year}</span>
             <span><strong>KM:</strong> ${vehicle.km}</span>
             <span><strong>Combustível:</strong> ${vehicle.fuel}</span>
-            <span><strong>Câmbio:</strong> Manual</span>
+            <span><strong>Câmbio:</strong> ${vehicle.transmission || 'Manual'}</span>
           </div>
           <p class="vehicle-price">${formatPrice(vehicle.price)}</p>
           <div class="vehicle-actions">
@@ -98,8 +98,26 @@ function renderVehicles() {
   }).join('');
 }
 
+async function loadVehicles() {
+  try {
+    const url = (BACKEND_URL || '') + '/api/vehicles';
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Falha ao carregar veículos');
+    const data = await res.json();
+    const vehicles = Array.isArray(data.vehicles) ? data.vehicles : [];
+    if (vehicles.length) {
+      renderVehicles(vehicles);
+      return;
+    }
+    renderVehicles(fallbackVehicles);
+  } catch (err) {
+    console.error('Erro ao carregar estoque:', err);
+    renderVehicles(fallbackVehicles);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', function(){
-  renderVehicles();
+  loadVehicles();
 
   const form = document.getElementById('contactForm');
   if(!form) return;

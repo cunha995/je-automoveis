@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Painel Admin — JE Automóveis</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="/" class="brand">
+        <img src="images/logo.svg" alt="JE Automóveis logo" class="logo">
+        <span>Painel Admin</span>
+      </a>
+      <nav class="main-nav">
+        <a href="/">Ver site</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container admin-main">
+    <section id="loginSection" class="admin-card">
+      <h1>Entrar no painel</h1>
+      <p>Faça login para cadastrar veículos e publicar fotos.</p>
+      <form id="loginForm" class="admin-form grid-2">
+        <label>Usuário
+          <input type="text" name="username" required placeholder="admin">
+        </label>
+        <label>Senha
+          <input type="password" name="password" required placeholder="••••••••">
+        </label>
+        <div class="full">
+          <button class="btn-primary" type="submit">Entrar</button>
+        </div>
+      </form>
+      <p id="loginMessage" class="admin-message"></p>
+    </section>
+
+    <section id="panelSection" class="admin-card hidden">
+      <div class="admin-head">
+        <h2>Cadastro de veículos</h2>
+        <button id="logoutBtn" class="btn-secondary" type="button">Sair</button>
+      </div>
+
+      <form id="vehicleForm" class="admin-form grid-2" enctype="multipart/form-data">
+        <input type="hidden" name="id">
+        <label>Modelo
+          <input type="text" name="model" required placeholder="Ex.: Fiat Argo Drive">
+        </label>
+        <label>Ano
+          <input type="number" name="year" required min="1990" max="2100">
+        </label>
+        <label>KM
+          <input type="text" name="km" placeholder="Ex.: 62.000 km">
+        </label>
+        <label>Combustível
+          <input type="text" name="fuel" placeholder="Ex.: Flex">
+        </label>
+        <label>Câmbio
+          <input type="text" name="transmission" placeholder="Ex.: Manual">
+        </label>
+        <label>Status
+          <input type="text" name="status" placeholder="Ex.: Disponível">
+        </label>
+        <label>Preço (R$)
+          <input type="number" name="price" required min="1" step="1" placeholder="68900">
+        </label>
+        <label>Foto do veículo
+          <input type="file" name="photo" accept="image/*">
+        </label>
+        <div class="full admin-actions">
+          <button class="btn-primary" type="submit">Salvar veículo</button>
+          <button class="btn-secondary" type="button" id="cancelEditBtn">Cancelar edição</button>
+        </div>
+      </form>
+
+      <p id="formMessage" class="admin-message"></p>
+    </section>
+
+    <section id="listSection" class="admin-card hidden">
+      <h2>Veículos cadastrados</h2>
+      <div id="adminVehicleList" class="admin-list"></div>
+    </section>
+  </main>
+
+  <script src="admin.js"></script>
+</body>
+</html>

@@ -14,6 +14,19 @@ Deploy no Render:
 3. Em Start Command: `npm start`
 4. Adicione as variáveis de ambiente no painel do Render conforme `.env.example`.
 
+Painel administrativo de veículos
+---------------------------------
+O projeto agora possui painel em `/admin` para cadastrar, editar e excluir veículos com foto.
+
+Credenciais padrão (altere em produção):
+- `ADMIN_USERNAME=admin`
+- `ADMIN_PASSWORD=admin123`
+
+Recomendado no Render:
+1. Em Environment, definir `ADMIN_USERNAME` e `ADMIN_PASSWORD` com valores fortes.
+2. Fazer deploy após salvar as variáveis.
+3. Acessar `https://SEU-SERVICO.onrender.com/admin`.
+
 SendGrid quick setup:
 1. Create a SendGrid account and generate an API Key (Full Access to Mail Send).
 2. Add `SENDGRID_API_KEY` to Render's Environment variables for the service.

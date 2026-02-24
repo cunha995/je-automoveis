@@ -1,0 +1,46 @@
+[
+  {
+    "id": "veh-gol-2021",
+    "model": "Volkswagen Gol 1.0",
+    "year": 2021,
+    "km": "49.000 km",
+    "fuel": "Flex",
+    "transmission": "Manual",
+    "price": 49900,
+    "status": "Disponível",
+    "image": "images/carros/carro-01.svg"
+  },
+  {
+    "id": "veh-argo-2020",
+    "model": "Fiat Argo Drive",
+    "year": 2020,
+    "km": "62.000 km",
+    "fuel": "Flex",
+    "transmission": "Manual",
+    "price": 58900,
+    "status": "Disponível",
+    "image": "images/carros/carro-02.svg"
+  },
+  {
+    "id": "veh-onix-2019",
+    "model": "Chevrolet Onix LT",
+    "year": 2019,
+    "km": "73.000 km",
+    "fuel": "Flex",
+    "transmission": "Manual",
+    "price": 56900,
+    "status": "Disponível",
+    "image": "images/carros/carro-03.svg"
+  },
+  {
+    "id": "veh-hb20-2022",
+    "model": "Hyundai HB20 Comfort",
+    "year": 2022,
+    "km": "31.000 km",
+    "fuel": "Flex",
+    "transmission": "Manual",
+    "price": 68900,
+    "status": "Disponível",
+    "image": "images/carros/carro-04.svg"
+  }
+]
