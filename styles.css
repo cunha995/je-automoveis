@@ -5,6 +5,7 @@
   --dark:#222;
   --muted:#666;
   --bg:#f5f6f8;
+  --hero-image:url('images/hero-bg.jpg');
   --max-width:1100px;
   --container-padding:16px;
 }
@@ -35,7 +36,13 @@ html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial,Helvetica,sans-
 .top-banner-dot{width:9px;height:9px;border-radius:999px;background:rgba(255,255,255,.45)}
 .top-banner-dot.active{background:#fff}
 
-.hero{background:linear-gradient(135deg,#121212,#2a2a2a);padding:64px 0;color:#fff}
+.hero{
+  background:
+    linear-gradient(135deg,rgba(18,18,18,.86),rgba(42,42,42,.78)),
+    var(--hero-image) center/cover no-repeat;
+  padding:64px 0;
+  color:#fff;
+}
 .hero-inner{display:flex;flex-direction:column;gap:12px;align-items:flex-start}
 .hero-inner h1{max-width:760px;font-size:clamp(2rem,4vw,3rem);margin:0}
 .hero-inner p{max-width:700px;color:#eee;margin:0}
