@@ -82,6 +82,19 @@ const fallbackBanners = [
 let currentBannerIndex = 0;
 let bannerIntervalId = null;
 
+const fallbackSiteSettings = {
+  aboutTitle: 'Sobre a JE Automóveis',
+  aboutText: 'Atendimento familiar com foco em transparência, veículos revisados e suporte completo no pré e pós-venda.',
+  aboutHighlights: [
+    'Veículos selecionados e revisados',
+    'Apoio na documentação',
+    'Atendimento rápido pelo WhatsApp',
+  ],
+  storeAddress: 'Rua Exemplo, 123 — Sua Cidade',
+  storePhone: '(00) 0 0000-0000',
+  storeEmail: 'contato@jeautomoveis.com',
+};
+
 function formatPrice(price) {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -251,6 +264,35 @@ function renderBanners(banners) {
   startBannerRotation();
 }
 
+function renderSiteSettings(settings) {
+  const safe = {
+    ...fallbackSiteSettings,
+    ...(settings || {}),
+  };
+
+  const aboutTitle = document.getElementById('aboutTitle');
+  const aboutText = document.getElementById('aboutText');
+  const aboutHighlights = document.getElementById('aboutHighlights');
+  const storeAddress = document.getElementById('storeAddress');
+  const storePhone = document.getElementById('storePhone');
+  const storeEmail = document.getElementById('storeEmail');
+
+  if (aboutTitle) aboutTitle.textContent = safe.aboutTitle;
+  if (aboutText) aboutText.textContent = safe.aboutText;
+  if (storeAddress) storeAddress.textContent = safe.storeAddress;
+  if (storePhone) storePhone.textContent = safe.storePhone;
+  if (storeEmail) storeEmail.textContent = safe.storeEmail;
+
+  if (aboutHighlights) {
+    const highlights = Array.isArray(safe.aboutHighlights) && safe.aboutHighlights.length
+      ? safe.aboutHighlights
+      : fallbackSiteSettings.aboutHighlights;
+    aboutHighlights.innerHTML = highlights
+      .map((item) => `<div class="highlight-item">✓ ${item}</div>`)
+      .join('');
+  }
+}
+
 async function loadVehicles() {
   try {
     const url = (BACKEND_URL || '') + '/api/vehicles';
@@ -297,10 +339,24 @@ async function loadBanners() {
   }
 }
 
+async function loadSiteSettings() {
+  try {
+    const url = (BACKEND_URL || '') + '/api/site-settings';
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Falha ao carregar configurações da loja');
+    const data = await res.json();
+    renderSiteSettings(data.settings || fallbackSiteSettings);
+  } catch (err) {
+    console.error('Erro ao carregar configurações da loja:', err);
+    renderSiteSettings(fallbackSiteSettings);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', function(){
   loadVehicles();
   loadSellers();
   loadBanners();
+  loadSiteSettings();
 
   const form = document.getElementById('contactForm');
   if(!form) return;

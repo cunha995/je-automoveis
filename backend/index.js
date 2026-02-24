@@ -20,6 +20,7 @@ const DATA_DIR = path.join(__dirname, 'data');
 const VEHICLES_FILE = path.join(DATA_DIR, 'vehicles.json');
 const SELLERS_FILE = path.join(DATA_DIR, 'sellers.json');
 const BANNERS_FILE = path.join(DATA_DIR, 'banners.json');
+const SITE_SETTINGS_FILE = path.join(DATA_DIR, 'site-settings.json');
 const UPLOADS_DIR = path.join(FRONTEND_ROOT, 'uploads');
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'je2026';
@@ -50,6 +51,24 @@ function ensureStorage() {
   if (!fs.existsSync(BANNERS_FILE)) {
     fs.writeFileSync(BANNERS_FILE, '[]', 'utf-8');
   }
+  if (!fs.existsSync(SITE_SETTINGS_FILE)) {
+    fs.writeFileSync(SITE_SETTINGS_FILE, JSON.stringify(defaultSiteSettings(), null, 2), 'utf-8');
+  }
+}
+
+function defaultSiteSettings() {
+  return {
+    aboutTitle: 'Sobre a JE Automóveis',
+    aboutText: 'Atendimento familiar com foco em transparência, veículos revisados e suporte completo no pré e pós-venda.',
+    aboutHighlights: [
+      'Veículos selecionados e revisados',
+      'Apoio na documentação',
+      'Atendimento rápido pelo WhatsApp',
+    ],
+    storeAddress: 'Rua Exemplo, 123 — Sua Cidade',
+    storePhone: '(00) 0 0000-0000',
+    storeEmail: 'contato@jeautomoveis.com',
+  };
 }
 
 if (hasCloudinaryConfig) {
@@ -83,6 +102,38 @@ function readBanners() {
 
 function writeBanners(banners) {
   writeCollection(BANNERS_FILE, banners);
+}
+
+function readSiteSettings() {
+  ensureStorage();
+  const defaults = defaultSiteSettings();
+  const raw = fs.readFileSync(SITE_SETTINGS_FILE, 'utf-8');
+  try {
+    const parsed = JSON.parse(raw);
+    return {
+      ...defaults,
+      ...(parsed || {}),
+      aboutHighlights: Array.isArray(parsed?.aboutHighlights)
+        ? parsed.aboutHighlights.filter((item) => String(item || '').trim())
+        : defaults.aboutHighlights,
+    };
+  } catch {
+    return defaults;
+  }
+}
+
+function writeSiteSettings(settings) {
+  ensureStorage();
+  const current = readSiteSettings();
+  const next = {
+    ...current,
+    ...settings,
+    aboutHighlights: Array.isArray(settings.aboutHighlights)
+      ? settings.aboutHighlights.filter((item) => String(item || '').trim())
+      : current.aboutHighlights,
+  };
+  fs.writeFileSync(SITE_SETTINGS_FILE, JSON.stringify(next, null, 2), 'utf-8');
+  return next;
 }
 
 function readCollection(filePath) {
@@ -246,6 +297,11 @@ app.get('/api/banners', (_req, res) => {
   res.json({ ok: true, banners });
 });
 
+app.get('/api/site-settings', (_req, res) => {
+  const settings = readSiteSettings();
+  res.json({ ok: true, settings });
+});
+
 app.post('/api/admin/login', (req, res) => {
   const { username, password } = req.body || {};
   if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
@@ -286,6 +342,40 @@ app.get('/api/admin/sellers', requireAdmin, (_req, res) => {
 app.get('/api/admin/banners', requireAdmin, (_req, res) => {
   const banners = readBanners().sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
   return res.json({ ok: true, banners });
+});
+
+app.get('/api/admin/site-settings', requireAdmin, (_req, res) => {
+  const settings = readSiteSettings();
+  return res.json({ ok: true, settings });
+});
+
+app.put('/api/admin/site-settings', requireAdmin, (req, res) => {
+  const {
+    aboutTitle,
+    aboutText,
+    aboutHighlights,
+    storeAddress,
+    storePhone,
+    storeEmail,
+  } = req.body || {};
+
+  const normalizedHighlights = Array.isArray(aboutHighlights)
+    ? aboutHighlights
+    : String(aboutHighlights || '')
+      .split('\n')
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+  const settings = writeSiteSettings({
+    aboutTitle: aboutTitle !== undefined ? String(aboutTitle).trim() : undefined,
+    aboutText: aboutText !== undefined ? String(aboutText).trim() : undefined,
+    aboutHighlights: normalizedHighlights,
+    storeAddress: storeAddress !== undefined ? String(storeAddress).trim() : undefined,
+    storePhone: storePhone !== undefined ? String(storePhone).trim() : undefined,
+    storeEmail: storeEmail !== undefined ? String(storeEmail).trim() : undefined,
+  });
+
+  return res.json({ ok: true, settings });
 });
 
 app.post('/api/admin/vehicles', requireAdmin, upload.single('photo'), async (req, res) => {

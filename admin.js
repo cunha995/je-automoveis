@@ -21,6 +21,9 @@ const bannerMessage = document.getElementById('bannerMessage');
 const adminBannerList = document.getElementById('adminBannerList');
 const cancelBannerEditBtn = document.getElementById('cancelBannerEditBtn');
 
+const settingsForm = document.getElementById('settingsForm');
+const settingsMessage = document.getElementById('settingsMessage');
+
 const logoutBtn = document.getElementById('logoutBtn');
 
 function getToken() {
@@ -273,7 +276,23 @@ async function loadBanners() {
 }
 
 async function loadAllAdminData() {
-  await Promise.all([loadVehicles(), loadSellers(), loadBanners()]);
+  await Promise.all([loadVehicles(), loadSellers(), loadBanners(), loadSiteSettings()]);
+}
+
+async function loadSiteSettings() {
+  const res = await fetch(`${API_BASE}/api/admin/site-settings`, { headers: authHeaders() });
+  if (handleUnauthorized(res)) return;
+  const data = await res.json();
+  const settings = data.settings || {};
+
+  settingsForm.elements.aboutTitle.value = settings.aboutTitle || '';
+  settingsForm.elements.aboutText.value = settings.aboutText || '';
+  settingsForm.elements.aboutHighlights.value = Array.isArray(settings.aboutHighlights)
+    ? settings.aboutHighlights.join('\n')
+    : '';
+  settingsForm.elements.storeAddress.value = settings.storeAddress || '';
+  settingsForm.elements.storePhone.value = settings.storePhone || '';
+  settingsForm.elements.storeEmail.value = settings.storeEmail || '';
 }
 
 loginForm.addEventListener('submit', async (event) => {
@@ -359,6 +378,37 @@ bannerForm.addEventListener('submit', async (event) => {
   setMessage(bannerMessage, id ? 'Banner atualizado com sucesso.' : 'Banner cadastrado com sucesso.');
   clearBannerForm();
   loadBanners();
+});
+
+settingsForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+
+  const payload = {
+    aboutTitle: settingsForm.elements.aboutTitle.value,
+    aboutText: settingsForm.elements.aboutText.value,
+    aboutHighlights: settingsForm.elements.aboutHighlights.value,
+    storeAddress: settingsForm.elements.storeAddress.value,
+    storePhone: settingsForm.elements.storePhone.value,
+    storeEmail: settingsForm.elements.storeEmail.value,
+  };
+
+  const res = await fetch(`${API_BASE}/api/admin/site-settings`, {
+    method: 'PUT',
+    headers: {
+      ...authHeaders(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    setMessage(settingsMessage, data.error || 'Falha ao salvar informações da loja.', true);
+    return;
+  }
+
+  setMessage(settingsMessage, 'Informações da loja atualizadas com sucesso.');
+  loadSiteSettings();
 });
 
 logoutBtn.addEventListener('click', async () => {

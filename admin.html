@@ -163,6 +163,39 @@
         <p id="bannerMessage" class="admin-message"></p>
         <div id="adminBannerList" class="admin-list"></div>
       </section>
+
+      <section class="admin-card">
+        <div class="admin-head">
+          <h2>Sobre nós e contato da loja</h2>
+        </div>
+
+        <form id="settingsForm" class="admin-form grid-2">
+          <label>Sobre nós — título
+            <input type="text" name="aboutTitle" placeholder="Ex.: Sobre a JE Automóveis">
+          </label>
+          <label>Telefone da loja
+            <input type="text" name="storePhone" placeholder="Ex.: (41) 99999-9999">
+          </label>
+          <label class="full">Sobre nós — texto
+            <input type="text" name="aboutText" placeholder="Texto de apresentação da loja">
+          </label>
+          <label class="full">Destaques (1 por linha)
+            <textarea name="aboutHighlights" rows="4" placeholder="Veículos revisados&#10;Apoio na documentação&#10;Atendimento rápido"></textarea>
+          </label>
+          <label class="full">Endereço da loja
+            <input type="text" name="storeAddress" placeholder="Ex.: Rua Exemplo, 123 — Cidade">
+          </label>
+          <label class="full">Email da loja
+            <input type="email" name="storeEmail" placeholder="Ex.: contato@jeautomoveis.com">
+          </label>
+
+          <div class="full admin-actions">
+            <button class="btn-primary" type="submit">Salvar informações da loja</button>
+          </div>
+        </form>
+
+        <p id="settingsMessage" class="admin-message"></p>
+      </section>
     </section>
   </main>
 

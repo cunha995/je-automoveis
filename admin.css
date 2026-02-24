@@ -3,7 +3,7 @@
 .admin-card{background:#fff;border:1px solid #e8e8e8;border-radius:12px;padding:18px;margin-bottom:16px}
 .hidden{display:none}
 .admin-form label{display:flex;flex-direction:column;gap:6px;font-weight:600;color:#333}
-.admin-form input,.admin-form select{width:100%;padding:10px;border:1px solid #cdcdcd;border-radius:8px;background:#fff}
+.admin-form input,.admin-form select,.admin-form textarea{width:100%;padding:10px;border:1px solid #cdcdcd;border-radius:8px;background:#fff;font-family:inherit}
 .grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .full{grid-column:1/-1}
 .admin-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
