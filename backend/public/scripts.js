@@ -6,6 +6,8 @@
 // If left empty the frontend will POST to a relative `/contact` path.
 const BACKEND_URL = window.location.origin;
 let STORE_WHATSAPP_NUMBER = '5500000000000';
+let STORE_BADGE_COLOR = '#d32f2f';
+let CURRENT_STORE_NAME = 'Loja';
 const PATH_PARTS = window.location.pathname.split('/').filter(Boolean);
 const STORE_SLUG = PATH_PARTS[0] === 'loja' ? PATH_PARTS[1] : '';
 
@@ -95,28 +97,33 @@ function buildApiUrl(resource) {
 
 function applyStoreBrand(store) {
   if (!store || !store.name) return;
+  CURRENT_STORE_NAME = store.name;
   document.title = `${store.name} — Venda, Troca e Consignado`;
   document.querySelectorAll('.brand span').forEach((node) => {
     node.textContent = store.name;
   });
-  const initials = String(store.name)
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0].toUpperCase())
-    .join('') || 'LO';
-  const logoSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><rect width="48" height="48" rx="6" fill="#d32f2f"/><text x="50%" y="55%" text-anchor="middle" fill="#ffffff" font-size="16" font-family="Arial" font-weight="700">${initials}</text></svg>`;
-  document.querySelectorAll('.brand .logo').forEach((img) => {
-    img.src = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(logoSvg)}`;
-    img.alt = `${store.name} logo`;
-  });
+  renderBrandBadge();
   const footerText = document.querySelector('.site-footer p');
   if (footerText) footerText.textContent = `© ${store.name} — Todos os direitos reservados`;
   const aboutTitle = document.getElementById('aboutTitle');
   if (aboutTitle && !aboutTitle.textContent.includes(store.name)) {
     aboutTitle.textContent = `Sobre a ${store.name}`;
   }
+}
+
+function renderBrandBadge() {
+  const initials = String(CURRENT_STORE_NAME || 'Loja')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0].toUpperCase())
+    .join('') || 'LO';
+  const logoSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><rect width="48" height="48" rx="6" fill="${STORE_BADGE_COLOR}"/><text x="50%" y="55%" text-anchor="middle" fill="#ffffff" font-size="16" font-family="Arial" font-weight="700">${initials}</text></svg>`;
+  document.querySelectorAll('.brand .logo').forEach((img) => {
+    img.src = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(logoSvg)}`;
+    img.alt = `${CURRENT_STORE_NAME} logo`;
+  });
 }
 
 const fallbackSiteSettings = {
@@ -131,6 +138,7 @@ const fallbackSiteSettings = {
   storePhone: '(00) 0 0000-0000',
   storeWhatsapp: '5500000000000',
   storeEmail: 'contato@jeautomoveis.com',
+  brandBadgeColor: '#d32f2f',
   heroBackgroundImage: '',
 };
 
@@ -384,6 +392,10 @@ function renderSiteSettings(settings) {
   const hero = document.querySelector('.hero');
 
   STORE_WHATSAPP_NUMBER = String(safe.storeWhatsapp || '').replace(/\D/g, '') || '5500000000000';
+  STORE_BADGE_COLOR = /^#[0-9a-fA-F]{6}$/.test(String(safe.brandBadgeColor || '').trim())
+    ? String(safe.brandBadgeColor).trim()
+    : '#d32f2f';
+  renderBrandBadge();
 
   if (aboutTitle) aboutTitle.textContent = safe.aboutTitle;
   if (aboutText) aboutText.textContent = safe.aboutText;

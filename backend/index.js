@@ -292,6 +292,7 @@ function defaultSiteSettings() {
     storePhone: '(00) 0 0000-0000',
     storeWhatsapp: '5500000000000',
     storeEmail: 'contato@jeautomoveis.com',
+    brandBadgeColor: '#d32f2f',
     heroBackgroundImage: '',
     heroBackgroundStorage: 'none',
     heroBackgroundPublicId: null,
@@ -985,7 +986,12 @@ app.put('/api/admin/site-settings', requireAdmin, (req, res) => {
     storePhone,
     storeWhatsapp,
     storeEmail,
+    brandBadgeColor,
   } = req.body || {};
+
+  const normalizedBadgeColor = /^#[0-9a-fA-F]{6}$/.test(String(brandBadgeColor || '').trim())
+    ? String(brandBadgeColor || '').trim()
+    : undefined;
 
   const normalizedHighlights = Array.isArray(aboutHighlights)
     ? aboutHighlights
@@ -1002,6 +1008,7 @@ app.put('/api/admin/site-settings', requireAdmin, (req, res) => {
     storePhone: storePhone !== undefined ? String(storePhone).trim() : undefined,
     storeWhatsapp: storeWhatsapp !== undefined ? String(storeWhatsapp).trim() : undefined,
     storeEmail: storeEmail !== undefined ? String(storeEmail).trim() : undefined,
+    brandBadgeColor: normalizedBadgeColor,
   });
 
   return res.json({ ok: true, settings });

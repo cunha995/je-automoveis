@@ -374,6 +374,9 @@ async function loadSiteSettings() {
   settingsForm.elements.storePhone.value = settings.storePhone || '';
   settingsForm.elements.storeWhatsapp.value = settings.storeWhatsapp || '';
   settingsForm.elements.storeEmail.value = settings.storeEmail || '';
+  settingsForm.elements.brandBadgeColor.value = /^#[0-9a-fA-F]{6}$/.test(String(settings.brandBadgeColor || ''))
+    ? settings.brandBadgeColor
+    : '#d32f2f';
 }
 
 loginForm.addEventListener('submit', async (event) => {
@@ -523,6 +526,7 @@ settingsForm.addEventListener('submit', async (event) => {
     storePhone: settingsForm.elements.storePhone.value,
     storeWhatsapp: settingsForm.elements.storeWhatsapp.value,
     storeEmail: settingsForm.elements.storeEmail.value,
+    brandBadgeColor: settingsForm.elements.brandBadgeColor.value,
   };
 
   const res = await fetch(`${API_BASE}/api/admin/site-settings`, {
