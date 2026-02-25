@@ -20,6 +20,7 @@ const DATA_DIR = process.env.DATA_DIR || process.env.RENDER_DISK_PATH || path.jo
 const VEHICLES_FILE = path.join(DATA_DIR, 'vehicles.json');
 const SELLERS_FILE = path.join(DATA_DIR, 'sellers.json');
 const BANNERS_FILE = path.join(DATA_DIR, 'banners.json');
+const WALL_FILE = path.join(DATA_DIR, 'wall.json');
 const SITE_SETTINGS_FILE = path.join(DATA_DIR, 'site-settings.json');
 const STORES_FILE = path.join(DATA_DIR, 'stores.json');
 const STORES_DIR = path.join(DATA_DIR, 'stores');
@@ -56,6 +57,9 @@ function ensureStorage() {
   }
   if (!fs.existsSync(BANNERS_FILE)) {
     fs.writeFileSync(BANNERS_FILE, '[]', 'utf-8');
+  }
+  if (!fs.existsSync(WALL_FILE)) {
+    fs.writeFileSync(WALL_FILE, '[]', 'utf-8');
   }
   if (!fs.existsSync(SITE_SETTINGS_FILE)) {
     fs.writeFileSync(SITE_SETTINGS_FILE, JSON.stringify(defaultSiteSettings(), null, 2), 'utf-8');
@@ -95,6 +99,7 @@ function seedDefaultMasterStore() {
   if (!fs.existsSync(files.vehiclesFile)) fs.copyFileSync(VEHICLES_FILE, files.vehiclesFile);
   if (!fs.existsSync(files.sellersFile)) fs.copyFileSync(SELLERS_FILE, files.sellersFile);
   if (!fs.existsSync(files.bannersFile)) fs.copyFileSync(BANNERS_FILE, files.bannersFile);
+  if (!fs.existsSync(files.wallFile)) fs.copyFileSync(WALL_FILE, files.wallFile);
   if (!fs.existsSync(files.settingsFile)) fs.copyFileSync(SITE_SETTINGS_FILE, files.settingsFile);
 }
 
@@ -146,6 +151,7 @@ function storeFiles(slug) {
     vehiclesFile: path.join(storeDir, 'vehicles.json'),
     sellersFile: path.join(storeDir, 'sellers.json'),
     bannersFile: path.join(storeDir, 'banners.json'),
+    wallFile: path.join(storeDir, 'wall.json'),
     settingsFile: path.join(storeDir, 'site-settings.json'),
   };
 }
@@ -157,6 +163,7 @@ function ensureStoreData(slug, settingsOverride = {}) {
   if (!fs.existsSync(files.vehiclesFile)) fs.writeFileSync(files.vehiclesFile, '[]', 'utf-8');
   if (!fs.existsSync(files.sellersFile)) fs.writeFileSync(files.sellersFile, '[]', 'utf-8');
   if (!fs.existsSync(files.bannersFile)) fs.writeFileSync(files.bannersFile, '[]', 'utf-8');
+  if (!fs.existsSync(files.wallFile)) fs.writeFileSync(files.wallFile, '[]', 'utf-8');
   if (!fs.existsSync(files.settingsFile)) {
     fs.writeFileSync(files.settingsFile, JSON.stringify({ ...defaultSiteSettings(), ...settingsOverride }, null, 2), 'utf-8');
   }
@@ -219,6 +226,16 @@ function readStoreSettings(slug) {
   }
 }
 
+function readStoreWall(slug) {
+  const files = ensureStoreData(slug);
+  return readCollection(files.wallFile);
+}
+
+function writeStoreWall(slug, wall) {
+  const files = ensureStoreData(slug);
+  writeCollection(files.wallFile, wall);
+}
+
 function writeStoreSettings(slug, settings) {
   const files = ensureStoreData(slug);
   const current = readStoreSettings(slug);
@@ -278,6 +295,25 @@ function readSiteSettingsScoped(req) {
 function writeSiteSettingsScoped(req, settings) {
   const slug = scopeSlugFromSession(req);
   return slug ? writeStoreSettings(slug, settings) : writeSiteSettings(settings);
+}
+
+function readWall() {
+  return readCollection(WALL_FILE);
+}
+
+function writeWall(values) {
+  writeCollection(WALL_FILE, values);
+}
+
+function readWallScoped(req) {
+  const slug = scopeSlugFromSession(req);
+  return slug ? readStoreWall(slug) : readWall();
+}
+
+function writeWallScoped(req, values) {
+  const slug = scopeSlugFromSession(req);
+  if (slug) return writeStoreWall(slug, values);
+  return writeWall(values);
 }
 
 function defaultSiteSettings() {
@@ -710,6 +746,11 @@ app.get('/api/banners', (_req, res) => {
   res.json({ ok: true, banners });
 });
 
+app.get('/api/wall', (_req, res) => {
+  const wall = readWall().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  res.json({ ok: true, wall });
+});
+
 app.get('/api/site-settings', (_req, res) => {
   const settings = readSiteSettings();
   res.json({ ok: true, settings });
@@ -768,6 +809,16 @@ app.get('/api/public/:slug/site-settings', (req, res) => {
 
   const settings = readStoreSettings(slug);
   return res.json({ ok: true, settings, store });
+});
+
+app.get('/api/public/:slug/wall', (req, res) => {
+  const slug = slugifyStore(req.params.slug);
+  if (!slug) return res.status(400).json({ error: 'Slug inválido' });
+  const store = readStores().find((item) => item.slug === slug);
+  if (!store) return res.status(404).json({ error: 'Loja não encontrada' });
+
+  const wall = readStoreWall(slug).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  return res.json({ ok: true, wall, store });
 });
 
 app.post('/api/master/login', (req, res) => {
@@ -1002,6 +1053,11 @@ app.get('/api/admin/site-settings', requireAdmin, (_req, res) => {
   return res.json({ ok: true, settings });
 });
 
+app.get('/api/admin/wall', requireAdmin, (req, res) => {
+  const wall = readWallScoped(req).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  return res.json({ ok: true, wall });
+});
+
 app.put('/api/admin/site-settings', requireAdmin, (req, res) => {
   const {
     aboutTitle,
@@ -1123,6 +1179,52 @@ app.put('/api/admin/change-password', requireAdmin, (req, res) => {
   }
 
   return res.json({ ok: true, message: 'Senha alterada com sucesso.' });
+});
+
+app.post('/api/admin/wall', requireAdmin, upload.single('photo'), async (req, res) => {
+  const { clientName, vehicleModel, message } = req.body || {};
+  if (!req.file) return res.status(400).json({ error: 'Envie uma foto para o mural.' });
+
+  let imageData = null;
+  try {
+    imageData = await persistImage(req.file);
+  } catch (err) {
+    console.error('Erro ao salvar foto do mural:', err);
+    return res.status(500).json({ error: 'Falha ao salvar foto do mural' });
+  }
+
+  const post = {
+    id: crypto.randomUUID(),
+    clientName: String(clientName || '').trim() || 'Cliente',
+    vehicleModel: String(vehicleModel || '').trim() || 'Veículo vendido',
+    message: String(message || '').trim(),
+    image: imageData ? imageData.image : '',
+    imageStorage: imageData ? imageData.imageStorage : 'none',
+    imagePublicId: imageData ? imageData.imagePublicId : null,
+    createdAt: new Date().toISOString(),
+  };
+
+  const wall = readWallScoped(req);
+  wall.unshift(post);
+  writeWallScoped(req, wall);
+  return res.status(201).json({ ok: true, post });
+});
+
+app.delete('/api/admin/wall/:id', requireAdmin, async (req, res) => {
+  const wall = readWallScoped(req);
+  const index = wall.findIndex((item) => item.id === req.params.id);
+  if (index < 0) return res.status(404).json({ error: 'Postagem não encontrada' });
+
+  const [removed] = wall.splice(index, 1);
+  writeWallScoped(req, wall);
+
+  try {
+    await removeStoredImage(removed);
+  } catch (err) {
+    console.warn('Falha ao remover foto do mural:', err.message);
+  }
+
+  return res.json({ ok: true });
 });
 
 app.post('/api/admin/vehicles', requireAdmin, vehicleUpload.fields([

@@ -83,6 +83,8 @@ const fallbackBanners = [
   }
 ];
 
+const fallbackWall = [];
+
 let currentBannerIndex = 0;
 let bannerIntervalId = null;
 let currentVehiclesCache = [];
@@ -301,6 +303,30 @@ function renderSellers(sellers) {
   }).join('');
 }
 
+function renderWall(posts) {
+  const grid = document.getElementById('wallGrid');
+  if (!grid) return;
+
+  if (!posts.length) {
+    grid.innerHTML = '<p>Nenhuma venda publicada no mural ainda.</p>';
+    return;
+  }
+
+  grid.innerHTML = posts.map((post) => {
+    const fallback = createFallbackImage(post.clientName || 'Cliente');
+    return `
+      <article class="seller-card">
+        <img class="seller-photo" src="${toAbsoluteImage(post.image, post.clientName || 'Cliente')}" alt="${post.clientName || 'Cliente'}" onerror="this.onerror=null;this.src='${fallback}'">
+        <div class="seller-body">
+          <h3>${post.clientName || 'Cliente'}</h3>
+          <p class="seller-role">${post.vehicleModel || 'Veículo vendido'}</p>
+          <p class="seller-bio">${post.message || ''}</p>
+        </div>
+      </article>
+    `;
+  }).join('');
+}
+
 function updateBannerActiveState() {
   const slides = [...document.querySelectorAll('.top-banner-slide')];
   const dots = [...document.querySelectorAll('.top-banner-dot')];
@@ -474,6 +500,21 @@ async function loadBanners() {
   }
 }
 
+async function loadWall() {
+  try {
+    const url = buildApiUrl('wall');
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Falha ao carregar mural');
+    const data = await res.json();
+    applyStoreBrand(data.store);
+    const wall = Array.isArray(data.wall) ? data.wall : [];
+    renderWall(wall.length ? wall : (STORE_SLUG ? [] : fallbackWall));
+  } catch (err) {
+    console.error('Erro ao carregar mural:', err);
+    renderWall(STORE_SLUG ? [] : fallbackWall);
+  }
+}
+
 async function loadSiteSettings() {
   try {
     const url = buildApiUrl('site-settings');
@@ -495,6 +536,7 @@ async function loadSiteSettings() {
 
 document.addEventListener('DOMContentLoaded', function(){
   loadVehicles();
+  loadWall();
   loadSellers();
   loadBanners();
   loadSiteSettings();

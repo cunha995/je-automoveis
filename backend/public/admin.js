@@ -24,6 +24,10 @@ const bannerMessage = document.getElementById('bannerMessage');
 const adminBannerList = document.getElementById('adminBannerList');
 const cancelBannerEditBtn = document.getElementById('cancelBannerEditBtn');
 
+const wallForm = document.getElementById('wallForm');
+const wallMessage = document.getElementById('wallMessage');
+const adminWallList = document.getElementById('adminWallList');
+
 const settingsForm = document.getElementById('settingsForm');
 const settingsMessage = document.getElementById('settingsMessage');
 const uploadHeroImageBtn = document.getElementById('uploadHeroImageBtn');
@@ -356,7 +360,50 @@ async function loadBanners() {
 }
 
 async function loadAllAdminData() {
-  await Promise.all([loadVehicles(), loadSellers(), loadBanners(), loadSiteSettings()]);
+  await Promise.all([loadVehicles(), loadSellers(), loadBanners(), loadWall(), loadSiteSettings()]);
+}
+
+async function loadWall() {
+  const res = await fetch(`${API_BASE}/api/admin/wall`, { headers: authHeaders() });
+  if (handleUnauthorized(res)) return;
+  const data = await res.json();
+  const wall = Array.isArray(data.wall) ? data.wall : [];
+
+  if (!wall.length) {
+    adminWallList.innerHTML = '<p>Nenhuma postagem no mural ainda.</p>';
+    return;
+  }
+
+  adminWallList.innerHTML = wall.map((item) => `
+    <article class="admin-item">
+      <img src="${toAbsoluteImage(item.image)}" alt="${item.clientName || 'Cliente'}">
+      <div>
+        <h3>${item.clientName || 'Cliente'} · ${item.vehicleModel || 'Veículo vendido'}</h3>
+        <p>${item.message || ''}</p>
+      </div>
+      <div class="admin-item-actions">
+        <button class="btn-delete" data-delete-wall="${item.id}">Excluir</button>
+      </div>
+    </article>
+  `).join('');
+
+  adminWallList.querySelectorAll('[data-delete-wall]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (!window.confirm('Deseja excluir esta postagem do mural?')) return;
+      const delRes = await fetch(`${API_BASE}/api/admin/wall/${btn.dataset.deleteWall}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      });
+
+      if (!delRes.ok) {
+        setMessage(wallMessage, 'Falha ao excluir postagem do mural.', true);
+        return;
+      }
+
+      setMessage(wallMessage, 'Postagem removida do mural com sucesso.');
+      loadWall();
+    });
+  });
 }
 
 async function loadSiteSettings() {
@@ -514,6 +561,33 @@ bannerForm.addEventListener('submit', async (event) => {
   clearBannerForm();
   loadBanners();
 });
+
+if (wallForm) {
+  wallForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const res = await fetch(`${API_BASE}/api/admin/wall`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: new FormData(wallForm),
+    });
+
+    if (handleUnauthorized(res)) {
+      alert('Sessão expirada. Faça login novamente para salvar as alterações.');
+      return;
+    }
+
+    const data = await safeReadJson(res);
+    if (!res.ok) {
+      setMessage(wallMessage, data.error || 'Falha ao publicar no mural.', true);
+      return;
+    }
+
+    wallForm.reset();
+    setMessage(wallMessage, 'Postagem publicada no mural com sucesso.');
+    loadWall();
+  });
+}
 
 settingsForm.addEventListener('submit', async (event) => {
   event.preventDefault();

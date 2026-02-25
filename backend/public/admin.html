@@ -44,6 +44,7 @@
           <a href="#sec-veiculos">Veículos</a>
           <a href="#sec-vendedores">Vendedores</a>
           <a href="#sec-banners">Banners/Ofertas</a>
+          <a href="#sec-mural">Mural de Vendidos</a>
           <a href="#sec-config">Sobre e Contato</a>
           <a href="#sec-senha">Senha do painel</a>
           <hr>
@@ -186,6 +187,33 @@
 
         <p id="bannerMessage" class="admin-message"></p>
         <div id="adminBannerList" class="admin-list"></div>
+      </section>
+
+      <section id="sec-mural" class="admin-card">
+        <div class="admin-head">
+          <h2>Mural de vendidos</h2>
+        </div>
+
+        <form id="wallForm" class="admin-form grid-2" enctype="multipart/form-data">
+          <label>Nome do cliente
+            <input type="text" name="clientName" placeholder="Ex.: João Silva" required>
+          </label>
+          <label>Veículo vendido
+            <input type="text" name="vehicleModel" placeholder="Ex.: Onix 1.0 2022" required>
+          </label>
+          <label class="full">Mensagem (opcional)
+            <input type="text" name="message" placeholder="Ex.: Entrega realizada com sucesso!">
+          </label>
+          <label class="full">Foto com cliente
+            <input type="file" name="photo" accept="image/*" required>
+          </label>
+          <div class="full admin-actions">
+            <button class="btn-primary" type="submit">Publicar no mural</button>
+          </div>
+        </form>
+
+        <p id="wallMessage" class="admin-message"></p>
+        <div id="adminWallList" class="admin-list"></div>
       </section>
 
       <section id="sec-config" class="admin-card">
