@@ -191,6 +191,18 @@ function normalizeWhatsappNumber(value) {
   return String(value || '').replace(/\D/g, '');
 }
 
+function formatWhatsappDisplay(value) {
+  const digits = normalizeWhatsappNumber(value);
+  if (!digits) return '';
+  if (digits.length >= 12) {
+    return `+${digits.slice(0, 2)} (${digits.slice(2, 4)}) ${digits.slice(4, 9)}-${digits.slice(9, 13)}`;
+  }
+  if (digits.length === 11) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  }
+  return digits;
+}
+
 function buildVehicleSellerInterestHtml(vehicle, listIndex) {
   const sellers = getInterestSellers().filter((seller) => {
     const phone = normalizeWhatsappNumber(seller?.whatsapp);
@@ -214,9 +226,10 @@ function buildVehicleSellerInterestHtml(vehicle, listIndex) {
   const renderSellerLink = (seller) => {
     const phone = normalizeWhatsappNumber(seller.whatsapp);
     const sellerName = String(seller.name || 'Vendedor').trim() || 'Vendedor';
+    const sellerWhatsapp = formatWhatsappDisplay(phone);
     const text = encodeURIComponent(`Olá ${sellerName}, tenho interesse no veículo ${vehicle.model} ${vehicle.year}.`);
     const link = `https://wa.me/${phone}?text=${text}`;
-    return `<a class="vehicle-interest-option" target="_blank" rel="noopener noreferrer" href="${link}">${sellerName}</a>`;
+    return `<a class="vehicle-interest-option" target="_blank" rel="noopener noreferrer" href="${link}">${sellerName}${sellerWhatsapp ? ` · ${sellerWhatsapp}` : ''}</a>`;
   };
 
   const allLinks = [...visibleSellers, ...hiddenSellers].map(renderSellerLink).join('');
