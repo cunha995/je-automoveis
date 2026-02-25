@@ -15,7 +15,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const FRONTEND_ROOT = path.resolve(__dirname, '..');
+const FRONTEND_ROOT = path.join(__dirname, 'public');
 const DATA_DIR = path.join(__dirname, 'data');
 const VEHICLES_FILE = path.join(DATA_DIR, 'vehicles.json');
 const SELLERS_FILE = path.join(DATA_DIR, 'sellers.json');
