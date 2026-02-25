@@ -85,6 +85,13 @@ html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial,Helvetica,sans-
 .btn-card{flex:1;text-align:center;text-decoration:none;padding:9px 10px;border-radius:8px;font-weight:600}
 .btn-card.primary{background:var(--primary);color:#fff}
 .btn-card.ghost{background:#f2f2f2;color:#222}
+.vehicle-interest-dropdown{flex:1;display:grid;gap:6px;position:relative}
+.vehicle-interest-trigger{width:100%;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.vehicle-interest-options{position:absolute;top:100%;left:0;right:0;z-index:3;display:grid;gap:6px;padding:8px;background:#fff;border:1px solid #e1e1e1;border-radius:10px;box-shadow:0 8px 22px rgba(0,0,0,.08)}
+.vehicle-interest-option{display:block;padding:8px 10px;border-radius:8px;background:#f2f7f2;border:1px solid #d7e7d7;color:#1f6f2a;text-decoration:none;font-size:.86rem;font-weight:700;text-align:center}
+.vehicle-interest-option:hover{background:#e8f3e8}
+.vehicle-interest-more{border:1px solid #d7e7d7;background:#fff;color:#1f6f2a;border-radius:999px;padding:5px 10px;font-size:.78rem;font-weight:700;cursor:pointer;justify-self:start}
+.vehicle-interest-more:hover{background:#f2f7f2}
 
 .seller-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
 .seller-card{background:#fff;border:1px solid #e9e9e9;border-radius:12px;overflow:hidden;box-shadow:0 8px 20px rgba(0,0,0,.04)}

@@ -199,7 +199,12 @@ function buildVehicleSellerInterestHtml(vehicle, listIndex) {
     return !/(offline|indispon|ausente)/.test(status);
   });
 
-  if (!sellers.length) return '';
+  const fallbackMessage = encodeURIComponent(`Olá! Tenho interesse no veículo ${vehicle.model} ${vehicle.year}.`);
+  const fallbackLink = `https://wa.me/${STORE_WHATSAPP_NUMBER}?text=${fallbackMessage}`;
+
+  if (!sellers.length) {
+    return `<a href="${fallbackLink}" target="_blank" rel="noopener noreferrer" class="btn-card primary">Tenho interesse</a>`;
+  }
 
   const visibleSellers = sellers.slice(0, 3);
   const hiddenSellers = sellers.slice(3);
@@ -211,23 +216,20 @@ function buildVehicleSellerInterestHtml(vehicle, listIndex) {
     const sellerName = String(seller.name || 'Vendedor').trim() || 'Vendedor';
     const text = encodeURIComponent(`Olá ${sellerName}, tenho interesse no veículo ${vehicle.model} ${vehicle.year}.`);
     const link = `https://wa.me/${phone}?text=${text}`;
-    return `<a class="vehicle-interest-link" target="_blank" rel="noopener noreferrer" href="${link}">${sellerName}</a>`;
+    return `<a class="vehicle-interest-option" target="_blank" rel="noopener noreferrer" href="${link}">${sellerName}</a>`;
   };
 
-  const visibleLinks = visibleSellers.map(renderSellerLink).join('');
-  const hiddenLinks = hiddenSellers.map(renderSellerLink).join('');
+  const allLinks = [...visibleSellers, ...hiddenSellers].map(renderSellerLink).join('');
   const toggleHtml = hiddenSellers.length
-    ? `<button type="button" class="vehicle-interest-toggle" data-toggle-interest="${hiddenListId}" data-expand-label="Ver mais vendedores" data-collapse-label="Ver menos vendedores">Ver mais vendedores</button>`
-    : '';
-  const hiddenListHtml = hiddenSellers.length
-    ? `<div id="${hiddenListId}" class="vehicle-interest-list vehicle-interest-list-hidden">${hiddenLinks}</div>`
+    ? `<button type="button" class="vehicle-interest-more" data-toggle-interest="${hiddenListId}" data-expand-label="Ver todos os vendedores" data-collapse-label="Ver menos vendedores">Ver todos os vendedores</button>`
     : '';
 
   return `
-    <div class="vehicle-interest-sellers">
-      <span class="vehicle-interest-label">Fale direto com um vendedor:</span>
-      <div class="vehicle-interest-list">${visibleLinks}</div>
-      ${hiddenListHtml}
+    <div class="vehicle-interest-dropdown">
+      <button type="button" class="btn-card primary vehicle-interest-trigger" data-toggle-interest="${hiddenListId}" data-expand-label="Tenho interesse ▲" data-collapse-label="Tenho interesse ▼">Tenho interesse ▼</button>
+      <div id="${hiddenListId}" class="vehicle-interest-options vehicle-interest-list-hidden">
+        ${allLinks}
+      </div>
       ${toggleHtml}
     </div>
   `;
@@ -319,7 +321,6 @@ function renderVehicles(vehicles) {
           ${isSold ? '<span class="sold-stamp">VENDIDO</span>' : ''}
         </div>
         ${thumbsHtml}
-        ${sellersInterestHtml}
         <div class="vehicle-body">
           <div class="vehicle-top">
             <h3 class="vehicle-title">${vehicle.model}</h3>
@@ -333,7 +334,7 @@ function renderVehicles(vehicles) {
           </div>
           <p class="vehicle-price">${formatPrice(vehicle.price)}</p>
           <div class="vehicle-actions">
-            <a href="${whatsappLink}" target="_blank" rel="noopener noreferrer" class="btn-card primary">Tenho interesse</a>
+            ${sellersInterestHtml}
             <a href="#contato" class="btn-card ghost">Solicitar proposta</a>
           </div>
         </div>
