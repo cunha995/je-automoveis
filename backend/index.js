@@ -398,6 +398,17 @@ function parsePriceValue(value) {
   return parsed;
 }
 
+function normalizeDateValue(value) {
+  const safe = String(value || '').trim();
+  if (!safe) return '';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(safe)) return null;
+  const parsed = new Date(`${safe}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) return null;
+  const [year, month, day] = safe.split('-').map((item) => Number(item));
+  if (parsed.getUTCFullYear() !== year || parsed.getUTCMonth() + 1 !== month || parsed.getUTCDate() !== day) return null;
+  return safe;
+}
+
 async function uploadToCloudinary(file) {
   if (!file || !file.buffer) return null;
 
@@ -795,6 +806,7 @@ app.post('/api/master/stores', requireMaster, (req, res) => {
     adminUsername,
     adminPassword,
     monthlyFee,
+    billingDueDate,
     billingNotes,
     publicBaseUrl,
   } = req.body || {};
@@ -819,6 +831,11 @@ app.post('/api/master/stores', requireMaster, (req, res) => {
     return res.status(400).json({ error: 'Mensalidade inválida. Informe um valor maior que zero.' });
   }
 
+  const safeBillingDueDate = normalizeDateValue(billingDueDate);
+  if (safeBillingDueDate === null) {
+    return res.status(400).json({ error: 'Data de vencimento inválida. Use o formato AAAA-MM-DD.' });
+  }
+
   const safePublicBaseUrl = normalizePublicBaseUrl(publicBaseUrl);
   if (String(publicBaseUrl || '').trim() && !safePublicBaseUrl) {
     return res.status(400).json({ error: 'URL base pública inválida. Use um domínio válido (ex.: loja-cliente.com).' });
@@ -836,6 +853,7 @@ app.post('/api/master/stores', requireMaster, (req, res) => {
     adminUsername: safeAdminUser,
     adminPassword: safeAdminPass,
     monthlyFee: parsedMonthlyFee,
+    billingDueDate: safeBillingDueDate,
     billingNotes: String(billingNotes || '').trim(),
     billingUpdatedAt: new Date().toISOString(),
     publicBaseUrl: safePublicBaseUrl,
@@ -890,10 +908,15 @@ app.put('/api/master/stores/:slug/billing', requireMaster, (req, res) => {
   const safeSlug = slugifyStore(req.params.slug);
   if (!safeSlug) return res.status(400).json({ error: 'Slug inválido' });
 
-  const { monthlyFee, billingNotes } = req.body || {};
+  const { monthlyFee, billingDueDate, billingNotes } = req.body || {};
   const parsedMonthlyFee = parsePriceValue(monthlyFee);
   if (!parsedMonthlyFee) {
     return res.status(400).json({ error: 'Mensalidade inválida. Informe um valor maior que zero.' });
+  }
+
+  const safeBillingDueDate = normalizeDateValue(billingDueDate);
+  if (safeBillingDueDate === null) {
+    return res.status(400).json({ error: 'Data de vencimento inválida. Use o formato AAAA-MM-DD.' });
   }
 
   const stores = readStores();
@@ -905,6 +928,7 @@ app.put('/api/master/stores/:slug/billing', requireMaster, (req, res) => {
   stores[storeIndex] = {
     ...stores[storeIndex],
     monthlyFee: parsedMonthlyFee,
+    billingDueDate: safeBillingDueDate,
     billingNotes: String(billingNotes || '').trim(),
     billingUpdatedAt: new Date().toISOString(),
   };

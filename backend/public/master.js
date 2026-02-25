@@ -44,6 +44,14 @@ function formatCurrency(value) {
   }).format(Number(value) || 0);
 }
 
+function formatDueDate(value) {
+  const safe = String(value || '').trim();
+  if (!safe) return 'Não definido';
+  const parsed = new Date(`${safe}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return safe;
+  return parsed.toLocaleDateString('pt-BR');
+}
+
 function normalizeBaseUrl(value) {
   const raw = String(value || '').trim();
   if (!raw) return '';
@@ -115,6 +123,7 @@ async function loadStores() {
           <p>Slug: ${store.slug}</p>
           <p>Admin: ${store.adminUsername || '-'}</p>
           <p>Mensalidade: <strong>${formatCurrency(store.monthlyFee)}</strong></p>
+          <p>Vencimento: <strong>${formatDueDate(store.billingDueDate)}</strong></p>
           <p>Cobrança: ${store.billingNotes || 'Sem observação'}</p>
           <p>Domínio cliente: ${store.publicBaseUrl || 'padrão do sistema'}</p>
           <a class="master-link" target="_blank" rel="noopener noreferrer" href="${systemPublicUrl}">URL sistema (site): ${systemPublicUrl}</a>
@@ -145,6 +154,9 @@ async function loadStores() {
       const notesInput = window.prompt('Observação da cobrança:', currentStore.billingNotes || '');
       if (notesInput === null) return;
 
+      const dueInput = window.prompt('Data de vencimento (AAAA-MM-DD):', String(currentStore.billingDueDate || ''));
+      if (dueInput === null) return;
+
       const res = await fetch(`${API_BASE}/api/master/stores/${currentStore.slug}/billing`, {
         method: 'PUT',
         headers: {
@@ -153,6 +165,7 @@ async function loadStores() {
         },
         body: JSON.stringify({
           monthlyFee: parsedFee,
+          billingDueDate: dueInput,
           billingNotes: notesInput,
         }),
       });
@@ -251,6 +264,7 @@ storeForm.addEventListener('submit', async (event) => {
     adminUsername: storeForm.elements.adminUsername.value,
     adminPassword: storeForm.elements.adminPassword.value,
     monthlyFee: storeForm.elements.monthlyFee.value,
+    billingDueDate: storeForm.elements.billingDueDate.value,
     billingNotes: storeForm.elements.billingNotes.value,
     publicBaseUrl: storeForm.elements.publicBaseUrl.value,
     storePhone: storeForm.elements.storePhone.value,
