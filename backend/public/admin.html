@@ -59,6 +59,7 @@
       </aside>
 
       <div class="admin-stack">
+      <p id="billingNotice" class="admin-message hidden"></p>
       <section id="sec-veiculos" class="admin-card">
         <div class="admin-head">
           <h2>Cadastro de veículos</h2>
@@ -94,7 +95,7 @@
           <label>Preço (R$)
             <input id="vehicle-price" type="number" name="price" required min="1" step="1" placeholder="68900">
           </label>
-          <label>Fotos do veículo (pode selecionar várias)
+          <label>Fotos do veículo (até 20 fotos)
             <input type="file" name="photos" accept="image/*" multiple>
           </label>
           <label>Vídeos do veículo (opcional)

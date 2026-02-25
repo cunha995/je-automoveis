@@ -34,6 +34,8 @@ const uploadHeroImageBtn = document.getElementById('uploadHeroImageBtn');
 const passwordSection = document.getElementById('sec-senha');
 const passwordForm = document.getElementById('passwordForm');
 const passwordMessage = document.getElementById('passwordMessage');
+const billingNotice = document.getElementById('billingNotice');
+let authFailureAlertMessage = 'Sessão expirada. Faça login novamente para continuar.';
 
 const logoutBtn = document.getElementById('logoutBtn');
 
@@ -81,6 +83,22 @@ function applyStorePasswordSectionVisibility() {
 function setMessage(target, message, isError = false) {
   target.textContent = message;
   target.style.color = isError ? '#b31818' : '#267529';
+}
+
+function setBillingNotice(message, isError = false) {
+  if (!billingNotice) return;
+  const safeMessage = String(message || '').trim();
+  billingNotice.textContent = safeMessage;
+  billingNotice.style.color = isError ? '#b31818' : '#8a5a00';
+  billingNotice.classList.toggle('hidden', !safeMessage);
+}
+
+function renderBillingFromPayload(billing) {
+  if (!billing || !billing.showWarning || !billing.message) {
+    setBillingNotice('');
+    return;
+  }
+  setBillingNotice(billing.message, false);
 }
 
 function toAbsoluteImage(pathValue) {
@@ -154,10 +172,36 @@ function sanitizePriceInput(value) {
 
 function handleUnauthorized(res) {
   if (res.status !== 401) return false;
+  authFailureAlertMessage = 'Sessão expirada. Faça login novamente para continuar.';
   setToken('');
   showPanel(false);
+  setBillingNotice('');
   setMessage(loginMessage, 'Sua sessão expirou. Faça login novamente.', true);
   return true;
+}
+
+async function handleBillingBlocked(res) {
+  if (res.status !== 403) return false;
+  const data = await safeReadJson(res);
+  if (data?.code !== 'BILLING_BLOCKED') return false;
+
+  authFailureAlertMessage = data.error || 'Acesso bloqueado por mensalidade vencida. Entre em contato para regularização: wa.me/44998840934.';
+  setToken('');
+  showPanel(false);
+  setBillingNotice('');
+  setMessage(loginMessage, data.error || 'Acesso bloqueado por mensalidade vencida. Entre em contato para regularização: wa.me/44998840934.', true);
+  return true;
+}
+
+async function handleAuthFailure(res) {
+  if (handleUnauthorized(res)) return true;
+  return handleBillingBlocked(res);
+}
+
+function getAndResetAuthFailureAlertMessage() {
+  const current = authFailureAlertMessage;
+  authFailureAlertMessage = 'Sessão expirada. Faça login novamente para continuar.';
+  return current;
 }
 
 async function safeReadJson(res) {
@@ -173,7 +217,7 @@ async function loadVehicles() {
     headers: authHeaders(),
     cache: 'no-store',
   });
-  if (handleUnauthorized(res)) return;
+  if (await handleAuthFailure(res)) return;
   const data = await res.json();
   const vehicles = Array.isArray(data.vehicles) ? data.vehicles : [];
 
@@ -238,7 +282,7 @@ async function loadVehicles() {
 
 async function loadSellers() {
   const res = await fetch(`${API_BASE}/api/admin/sellers`, { headers: authHeaders() });
-  if (handleUnauthorized(res)) return;
+  if (await handleAuthFailure(res)) return;
   const data = await res.json();
   const sellers = Array.isArray(data.sellers) ? data.sellers : [];
 
@@ -302,7 +346,7 @@ async function loadSellers() {
 
 async function loadBanners() {
   const res = await fetch(`${API_BASE}/api/admin/banners`, { headers: authHeaders() });
-  if (handleUnauthorized(res)) return;
+  if (await handleAuthFailure(res)) return;
   const data = await res.json();
   const banners = Array.isArray(data.banners) ? data.banners : [];
 
@@ -360,12 +404,17 @@ async function loadBanners() {
 }
 
 async function loadAllAdminData() {
+  const billingRes = await fetch(`${API_BASE}/api/admin/billing-status`, { headers: authHeaders() });
+  if (await handleAuthFailure(billingRes)) return;
+  const billingData = await safeReadJson(billingRes);
+  renderBillingFromPayload(billingData.billing || null);
+
   await Promise.all([loadVehicles(), loadSellers(), loadBanners(), loadWall(), loadSiteSettings()]);
 }
 
 async function loadWall() {
   const res = await fetch(`${API_BASE}/api/admin/wall`, { headers: authHeaders() });
-  if (handleUnauthorized(res)) return;
+  if (await handleAuthFailure(res)) return;
   const data = await res.json();
   const wall = Array.isArray(data.wall) ? data.wall : [];
 
@@ -408,7 +457,7 @@ async function loadWall() {
 
 async function loadSiteSettings() {
   const res = await fetch(`${API_BASE}/api/admin/site-settings`, { headers: authHeaders() });
-  if (handleUnauthorized(res)) return;
+  if (await handleAuthFailure(res)) return;
   const data = await res.json();
   const settings = data.settings || {};
 
@@ -440,7 +489,7 @@ loginForm.addEventListener('submit', async (event) => {
     body: JSON.stringify(payload),
   });
 
-  const data = await res.json();
+  const data = await safeReadJson(res);
   if (!res.ok) {
     setMessage(loginMessage, data.error || 'Falha no login.', true);
     return;
@@ -448,6 +497,7 @@ loginForm.addEventListener('submit', async (event) => {
 
   setToken(data.token);
   showPanel(true);
+  renderBillingFromPayload(data.billing || null);
   setMessage(loginMessage, 'Login realizado com sucesso.');
   loadAllAdminData();
 });
@@ -490,8 +540,8 @@ vehicleForm.addEventListener('submit', async (event) => {
       body: formData,
     });
 
-    if (handleUnauthorized(res)) {
-      alert('Sessão expirada. Faça login novamente para salvar as alterações.');
+    if (await handleAuthFailure(res)) {
+      alert(getAndResetAuthFailureAlertMessage());
       return;
     }
 
@@ -524,8 +574,8 @@ sellerForm.addEventListener('submit', async (event) => {
     headers: authHeaders(),
     body: new FormData(sellerForm),
   });
-  if (handleUnauthorized(res)) {
-    alert('Sessão expirada. Faça login novamente para salvar as alterações.');
+  if (await handleAuthFailure(res)) {
+    alert(getAndResetAuthFailureAlertMessage());
     return;
   }
   const data = await res.json();
@@ -548,8 +598,8 @@ bannerForm.addEventListener('submit', async (event) => {
     headers: authHeaders(),
     body: new FormData(bannerForm),
   });
-  if (handleUnauthorized(res)) {
-    alert('Sessão expirada. Faça login novamente para salvar as alterações.');
+  if (await handleAuthFailure(res)) {
+    alert(getAndResetAuthFailureAlertMessage());
     return;
   }
   const data = await res.json();
@@ -572,8 +622,8 @@ if (wallForm) {
       body: new FormData(wallForm),
     });
 
-    if (handleUnauthorized(res)) {
-      alert('Sessão expirada. Faça login novamente para salvar as alterações.');
+    if (await handleAuthFailure(res)) {
+      alert(getAndResetAuthFailureAlertMessage());
       return;
     }
 
@@ -611,8 +661,8 @@ settingsForm.addEventListener('submit', async (event) => {
     },
     body: JSON.stringify(payload),
   });
-  if (handleUnauthorized(res)) {
-    alert('Sessão expirada. Faça login novamente para salvar as alterações.');
+  if (await handleAuthFailure(res)) {
+    alert(getAndResetAuthFailureAlertMessage());
     return;
   }
 
@@ -645,8 +695,8 @@ if (uploadHeroImageBtn && settingsForm) {
       body: formData,
     });
 
-    if (handleUnauthorized(res)) {
-      alert('Sessão expirada. Faça login novamente para salvar as alterações.');
+    if (await handleAuthFailure(res)) {
+      alert(getAndResetAuthFailureAlertMessage());
       return;
     }
 
@@ -702,8 +752,8 @@ if (passwordForm) {
       }),
     });
 
-    if (handleUnauthorized(res)) {
-      alert('Sessão expirada. Faça login novamente para alterar a senha.');
+    if (await handleAuthFailure(res)) {
+      alert(getAndResetAuthFailureAlertMessage());
       return;
     }
 
@@ -727,6 +777,7 @@ logoutBtn.addEventListener('click', async () => {
   } catch (_err) {
   }
   setToken('');
+  setBillingNotice('');
   showPanel(false);
 });
 

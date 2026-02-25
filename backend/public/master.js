@@ -125,6 +125,7 @@ async function loadStores() {
           <p>Mensalidade: <strong>${formatCurrency(store.monthlyFee)}</strong></p>
           <p>Vencimento: <strong>${formatDueDate(store.billingDueDate)}</strong></p>
           <p>Cobrança: ${store.billingNotes || 'Sem observação'}</p>
+          <p>WhatsApp cobrança: ${store.billingSupportWhatsapp || 'wa.me/44998840934'}</p>
           <p>Domínio cliente: ${store.publicBaseUrl || 'padrão do sistema'}</p>
           <a class="master-link" target="_blank" rel="noopener noreferrer" href="${systemPublicUrl}">URL sistema (site): ${systemPublicUrl}</a>
           <a class="master-link" target="_blank" rel="noopener noreferrer" href="${systemAdminUrl}">URL sistema (admin): ${systemAdminUrl}</a>
@@ -154,6 +155,9 @@ async function loadStores() {
       const notesInput = window.prompt('Observação da cobrança:', currentStore.billingNotes || '');
       if (notesInput === null) return;
 
+      const billingWhatsappInput = window.prompt('WhatsApp da cobrança (ex.: wa.me/44998840934):', currentStore.billingSupportWhatsapp || 'wa.me/44998840934');
+      if (billingWhatsappInput === null) return;
+
       const dueInput = window.prompt('Data de vencimento (AAAA-MM-DD):', String(currentStore.billingDueDate || ''));
       if (dueInput === null) return;
 
@@ -167,6 +171,7 @@ async function loadStores() {
           monthlyFee: parsedFee,
           billingDueDate: dueInput,
           billingNotes: notesInput,
+          billingSupportWhatsapp: billingWhatsappInput,
         }),
       });
 
@@ -266,6 +271,7 @@ storeForm.addEventListener('submit', async (event) => {
     monthlyFee: storeForm.elements.monthlyFee.value,
     billingDueDate: storeForm.elements.billingDueDate.value,
     billingNotes: storeForm.elements.billingNotes.value,
+    billingSupportWhatsapp: storeForm.elements.billingSupportWhatsapp.value,
     publicBaseUrl: storeForm.elements.publicBaseUrl.value,
     storePhone: storeForm.elements.storePhone.value,
     storeWhatsapp: storeForm.elements.storeWhatsapp.value,

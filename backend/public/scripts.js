@@ -88,6 +88,7 @@ const fallbackWall = [];
 let currentBannerIndex = 0;
 let bannerIntervalId = null;
 let currentVehiclesCache = [];
+let currentSellersCache = [];
 let vehicleCarouselTimers = [];
 
 function buildApiUrl(resource) {
@@ -181,6 +182,75 @@ function normalizeVehicleMedia(vehicle) {
   return [];
 }
 
+function getInterestSellers() {
+  if (currentSellersCache.length) return currentSellersCache;
+  return STORE_SLUG ? [] : fallbackSellers;
+}
+
+function normalizeWhatsappNumber(value) {
+  return String(value || '').replace(/\D/g, '');
+}
+
+function buildVehicleSellerInterestHtml(vehicle, listIndex) {
+  const sellers = getInterestSellers().filter((seller) => {
+    const phone = normalizeWhatsappNumber(seller?.whatsapp);
+    if (!phone) return false;
+    const status = String(seller?.status || '').toLowerCase();
+    return !/(offline|indispon|ausente)/.test(status);
+  });
+
+  if (!sellers.length) return '';
+
+  const visibleSellers = sellers.slice(0, 3);
+  const hiddenSellers = sellers.slice(3);
+  const safeVehicleId = String(vehicle.id || '').replace(/[^a-zA-Z0-9_-]/g, '');
+  const hiddenListId = `interest-sellers-${safeVehicleId || `idx-${listIndex}`}`;
+
+  const renderSellerLink = (seller) => {
+    const phone = normalizeWhatsappNumber(seller.whatsapp);
+    const sellerName = String(seller.name || 'Vendedor').trim() || 'Vendedor';
+    const text = encodeURIComponent(`Olá ${sellerName}, tenho interesse no veículo ${vehicle.model} ${vehicle.year}.`);
+    const link = `https://wa.me/${phone}?text=${text}`;
+    return `<a class="vehicle-interest-link" target="_blank" rel="noopener noreferrer" href="${link}">${sellerName}</a>`;
+  };
+
+  const visibleLinks = visibleSellers.map(renderSellerLink).join('');
+  const hiddenLinks = hiddenSellers.map(renderSellerLink).join('');
+  const toggleHtml = hiddenSellers.length
+    ? `<button type="button" class="vehicle-interest-toggle" data-toggle-interest="${hiddenListId}" data-expand-label="Ver mais vendedores" data-collapse-label="Ver menos vendedores">Ver mais vendedores</button>`
+    : '';
+  const hiddenListHtml = hiddenSellers.length
+    ? `<div id="${hiddenListId}" class="vehicle-interest-list vehicle-interest-list-hidden">${hiddenLinks}</div>`
+    : '';
+
+  return `
+    <div class="vehicle-interest-sellers">
+      <span class="vehicle-interest-label">Fale direto com um vendedor:</span>
+      <div class="vehicle-interest-list">${visibleLinks}</div>
+      ${hiddenListHtml}
+      ${toggleHtml}
+    </div>
+  `;
+}
+
+function bindVehicleInterestToggle() {
+  const toggles = document.querySelectorAll('[data-toggle-interest]');
+  toggles.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.getAttribute('data-toggle-interest');
+      if (!targetId) return;
+      const target = document.getElementById(targetId);
+      if (!target) return;
+
+      const isHidden = target.classList.contains('vehicle-interest-list-hidden');
+      target.classList.toggle('vehicle-interest-list-hidden', !isHidden);
+      btn.textContent = isHidden
+        ? (btn.getAttribute('data-collapse-label') || 'Ver menos vendedores')
+        : (btn.getAttribute('data-expand-label') || 'Ver mais vendedores');
+    });
+  });
+}
+
 function clearVehicleCarousels() {
   vehicleCarouselTimers.forEach((timerId) => clearInterval(timerId));
   vehicleCarouselTimers = [];
@@ -218,7 +288,7 @@ function renderVehicles(vehicles) {
     return;
   }
 
-  grid.innerHTML = currentVehiclesCache.map((vehicle) => {
+  grid.innerHTML = currentVehiclesCache.map((vehicle, index) => {
     const isSold = vehicle.sold === true || /vendid/i.test(String(vehicle.status || ''));
     const message = encodeURIComponent(`Olá! Tenho interesse no veículo ${vehicle.model} ${vehicle.year}.`);
     const whatsappLink = `https://wa.me/${STORE_WHATSAPP_NUMBER}?text=${message}`;
@@ -240,6 +310,7 @@ function renderVehicles(vehicles) {
         ? `<span class="vehicle-media-chip">Vídeo</span>`
         : `<img src="${toAbsoluteImage(item.url, `${vehicle.model} ${vehicle.year}`)}" alt="Foto de ${vehicle.model}">`).join('')}</div>`
       : '';
+    const sellersInterestHtml = buildVehicleSellerInterestHtml(vehicle, index);
 
     return `
       <article class="vehicle-card">
@@ -248,6 +319,7 @@ function renderVehicles(vehicles) {
           ${isSold ? '<span class="sold-stamp">VENDIDO</span>' : ''}
         </div>
         ${thumbsHtml}
+        ${sellersInterestHtml}
         <div class="vehicle-body">
           <div class="vehicle-top">
             <h3 class="vehicle-title">${vehicle.model}</h3>
@@ -269,6 +341,7 @@ function renderVehicles(vehicles) {
     `;
   }).join('');
 
+  bindVehicleInterestToggle();
   startVehicleCarousels();
 }
 
@@ -478,10 +551,14 @@ async function loadSellers() {
     const data = await res.json();
     applyStoreBrand(data.store);
     const sellers = Array.isArray(data.sellers) ? data.sellers : [];
-    renderSellers(sellers.length ? sellers : (STORE_SLUG ? [] : fallbackSellers));
+    currentSellersCache = sellers.length ? sellers : (STORE_SLUG ? [] : fallbackSellers);
+    renderSellers(currentSellersCache);
+    if (currentVehiclesCache.length) renderVehicles(currentVehiclesCache);
   } catch (err) {
     console.error('Erro ao carregar vendedores:', err);
-    renderSellers(STORE_SLUG ? [] : fallbackSellers);
+    currentSellersCache = STORE_SLUG ? [] : fallbackSellers;
+    renderSellers(currentSellersCache);
+    if (currentVehiclesCache.length) renderVehicles(currentVehiclesCache);
   }
 }
 

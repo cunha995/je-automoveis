@@ -66,6 +66,14 @@ html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial,Helvetica,sans-
 .vehicle-media-strip{display:flex;gap:6px;padding:8px 10px 0}
 .vehicle-media-strip img{width:56px;height:38px;object-fit:cover;border-radius:6px;border:1px solid #e4e4e4;background:#efefef}
 .vehicle-media-chip{display:inline-flex;align-items:center;justify-content:center;min-width:56px;height:38px;padding:0 8px;border-radius:6px;border:1px solid #e4e4e4;background:#f7f7f7;color:#444;font-size:.78rem;font-weight:700}
+.vehicle-interest-sellers{padding:8px 10px 0;display:grid;gap:6px}
+.vehicle-interest-label{font-size:.78rem;color:#555;font-weight:700}
+.vehicle-interest-list{display:flex;flex-wrap:wrap;gap:6px}
+.vehicle-interest-list-hidden{display:none}
+.vehicle-interest-link{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;border-radius:999px;background:#f2f7f2;border:1px solid #d7e7d7;color:#1f6f2a;text-decoration:none;font-size:.82rem;font-weight:700}
+.vehicle-interest-link:hover{background:#e8f3e8}
+.vehicle-interest-toggle{justify-self:start;border:1px solid #d7e7d7;background:#fff;color:#1f6f2a;border-radius:999px;padding:5px 10px;font-size:.78rem;font-weight:700;cursor:pointer}
+.vehicle-interest-toggle:hover{background:#f2f7f2}
 .sold-stamp{position:absolute;top:10px;left:10px;background:#c40000;color:#fff;font-weight:800;font-size:.78rem;padding:6px 10px;border-radius:6px;letter-spacing:.06em;box-shadow:0 6px 14px rgba(0,0,0,.25)}
 .vehicle-body{padding:14px}
 .vehicle-top{display:flex;align-items:center;justify-content:space-between;gap:10px}

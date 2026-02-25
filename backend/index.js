@@ -30,6 +30,7 @@ const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'je2026';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Je2026';
 const MASTER_USERNAME = process.env.MASTER_USERNAME || 'master';
 const MASTER_PASSWORD = process.env.MASTER_PASSWORD || 'Master2026';
+const BILLING_SUPPORT_WHATSAPP = process.env.BILLING_SUPPORT_WHATSAPP || 'wa.me/44998840934';
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
 const adminSessions = new Map();
 const masterSessions = new Map();
@@ -445,6 +446,89 @@ function normalizeDateValue(value) {
   return safe;
 }
 
+function formatDatePtBr(dateValue) {
+  const safeDate = normalizeDateValue(dateValue);
+  if (!safeDate) return '';
+  const [year, month, day] = safeDate.split('-');
+  return `${day}/${month}/${year}`;
+}
+
+function normalizeBillingSupportWhatsapp(value) {
+  const safe = String(value || '').trim();
+  return safe || BILLING_SUPPORT_WHATSAPP;
+}
+
+function resolveStoreBillingSupportWhatsapp(store) {
+  return normalizeBillingSupportWhatsapp(store?.billingSupportWhatsapp);
+}
+
+function evaluateStoreBillingStatus(store) {
+  if (!store || !store.slug) {
+    return {
+      hasBillingControl: false,
+      isBlocked: false,
+      showWarning: false,
+      daysUntilDue: null,
+      dueDate: '',
+      message: '',
+    };
+  }
+
+  const safeDueDate = normalizeDateValue(store.billingDueDate);
+  if (!safeDueDate) {
+    return {
+      hasBillingControl: false,
+      isBlocked: false,
+      showWarning: false,
+      daysUntilDue: null,
+      dueDate: '',
+      message: '',
+    };
+  }
+
+  const dueDateUtc = new Date(`${safeDueDate}T00:00:00.000Z`).getTime();
+  const now = new Date();
+  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const daysUntilDue = Math.round((dueDateUtc - todayUtc) / msPerDay);
+  const formattedDueDate = formatDatePtBr(safeDueDate);
+  const billingSupportWhatsapp = resolveStoreBillingSupportWhatsapp(store);
+
+  if (todayUtc > dueDateUtc) {
+    return {
+      hasBillingControl: true,
+      isBlocked: true,
+      showWarning: false,
+      daysUntilDue,
+      dueDate: safeDueDate,
+      message: `Acesso temporariamente bloqueado: mensalidade vencida em ${formattedDueDate}. Entre em contato para regularização no WhatsApp ${billingSupportWhatsapp}; após a confirmação do pagamento, o painel será liberado.`,
+    };
+  }
+
+  if (daysUntilDue <= 2) {
+    const dueLabel = daysUntilDue === 0
+      ? 'vence hoje'
+      : `vence em ${daysUntilDue} dia${daysUntilDue === 1 ? '' : 's'}`;
+    return {
+      hasBillingControl: true,
+      isBlocked: false,
+      showWarning: true,
+      daysUntilDue,
+      dueDate: safeDueDate,
+      message: `Aviso importante: sua mensalidade ${dueLabel} (${formattedDueDate}). Evite bloqueio do painel realizando a regularização antes do vencimento. Dúvidas: WhatsApp ${billingSupportWhatsapp}.`,
+    };
+  }
+
+  return {
+    hasBillingControl: true,
+    isBlocked: false,
+    showWarning: false,
+    daysUntilDue,
+    dueDate: safeDueDate,
+    message: '',
+  };
+}
+
 async function uploadToCloudinary(file) {
   if (!file || !file.buffer) return null;
 
@@ -667,6 +751,25 @@ function requireAdmin(req, res, next) {
   if (!token) return res.status(401).json({ error: 'Não autenticado' });
   const session = adminSessions.get(token);
   if (!session) return res.status(401).json({ error: 'Sessão inválida ou expirada' });
+
+  if (session.storeSlug) {
+    const store = readStores().find((item) => item.slug === session.storeSlug);
+    if (!store) {
+      adminSessions.delete(token);
+      return res.status(401).json({ error: 'Loja não encontrada para esta sessão' });
+    }
+
+    const billing = evaluateStoreBillingStatus(store);
+    if (billing.isBlocked) {
+      adminSessions.delete(token);
+      return res.status(403).json({
+        code: 'BILLING_BLOCKED',
+        error: billing.message,
+        billing,
+      });
+    }
+  }
+
   req.admin = session;
   return next();
 }
@@ -859,6 +962,7 @@ app.post('/api/master/stores', requireMaster, (req, res) => {
     monthlyFee,
     billingDueDate,
     billingNotes,
+    billingSupportWhatsapp,
     publicBaseUrl,
   } = req.body || {};
   const safeName = String(name || '').trim();
@@ -906,6 +1010,7 @@ app.post('/api/master/stores', requireMaster, (req, res) => {
     monthlyFee: parsedMonthlyFee,
     billingDueDate: safeBillingDueDate,
     billingNotes: String(billingNotes || '').trim(),
+    billingSupportWhatsapp: normalizeBillingSupportWhatsapp(billingSupportWhatsapp),
     billingUpdatedAt: new Date().toISOString(),
     publicBaseUrl: safePublicBaseUrl,
     createdAt: new Date().toISOString(),
@@ -959,7 +1064,7 @@ app.put('/api/master/stores/:slug/billing', requireMaster, (req, res) => {
   const safeSlug = slugifyStore(req.params.slug);
   if (!safeSlug) return res.status(400).json({ error: 'Slug inválido' });
 
-  const { monthlyFee, billingDueDate, billingNotes } = req.body || {};
+  const { monthlyFee, billingDueDate, billingNotes, billingSupportWhatsapp } = req.body || {};
   const parsedMonthlyFee = parsePriceValue(monthlyFee);
   if (!parsedMonthlyFee) {
     return res.status(400).json({ error: 'Mensalidade inválida. Informe um valor maior que zero.' });
@@ -981,6 +1086,7 @@ app.put('/api/master/stores/:slug/billing', requireMaster, (req, res) => {
     monthlyFee: parsedMonthlyFee,
     billingDueDate: safeBillingDueDate,
     billingNotes: String(billingNotes || '').trim(),
+    billingSupportWhatsapp: normalizeBillingSupportWhatsapp(billingSupportWhatsapp),
     billingUpdatedAt: new Date().toISOString(),
   };
 
@@ -990,6 +1096,7 @@ app.put('/api/master/stores/:slug/billing', requireMaster, (req, res) => {
 
 app.post('/api/admin/login', (req, res) => {
   const { username, password, storeSlug } = req.body || {};
+  let billingStatus = null;
 
   let sessionStoreSlug = '';
   if (storeSlug) {
@@ -1002,6 +1109,16 @@ app.post('/api/admin/login', (req, res) => {
     if (username !== expectedUser || password !== expectedPass) {
       return res.status(401).json({ error: 'Credenciais da loja inválidas' });
     }
+
+    billingStatus = evaluateStoreBillingStatus(store);
+    if (billingStatus.isBlocked) {
+      return res.status(403).json({
+        code: 'BILLING_BLOCKED',
+        error: billingStatus.message,
+        billing: billingStatus,
+      });
+    }
+
     sessionStoreSlug = safeSlug;
   } else if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: 'Credenciais inválidas' });
@@ -1017,8 +1134,31 @@ app.post('/api/admin/login', (req, res) => {
     expiresAt,
     storeSlug: sessionStoreSlug,
     isStoreAdmin: !!sessionStoreSlug,
+    billing: billingStatus,
     usingDefaultPassword: ADMIN_PASSWORD === 'Je2026',
   });
+});
+
+app.get('/api/admin/billing-status', requireAdmin, (req, res) => {
+  const storeSlug = scopeSlugFromSession(req);
+  if (!storeSlug) {
+    return res.json({
+      ok: true,
+      billing: {
+        hasBillingControl: false,
+        isBlocked: false,
+        showWarning: false,
+        daysUntilDue: null,
+        dueDate: '',
+        message: '',
+      },
+    });
+  }
+
+  const store = readStores().find((item) => item.slug === storeSlug);
+  if (!store) return res.status(404).json({ error: 'Loja não encontrada' });
+
+  return res.json({ ok: true, billing: evaluateStoreBillingStatus(store) });
 });
 
 app.post('/api/admin/logout', requireAdmin, (req, res) => {
@@ -1228,7 +1368,7 @@ app.delete('/api/admin/wall/:id', requireAdmin, async (req, res) => {
 });
 
 app.post('/api/admin/vehicles', requireAdmin, vehicleUpload.fields([
-  { name: 'photos', maxCount: 12 },
+  { name: 'photos', maxCount: 20 },
   { name: 'videos', maxCount: 4 },
   { name: 'photo', maxCount: 1 },
 ]), async (req, res) => {
@@ -1284,7 +1424,7 @@ app.post('/api/admin/vehicles', requireAdmin, vehicleUpload.fields([
 });
 
 app.put('/api/admin/vehicles/:id', requireAdmin, vehicleUpload.fields([
-  { name: 'photos', maxCount: 12 },
+  { name: 'photos', maxCount: 20 },
   { name: 'videos', maxCount: 4 },
   { name: 'photo', maxCount: 1 },
 ]), async (req, res) => {
