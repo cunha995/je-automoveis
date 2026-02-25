@@ -1731,7 +1731,17 @@ app.get('/loja/:slug', (req, res) => {
 
 app.use('/uploads', express.static(UPLOADS_DIR));
 
-app.use(express.static(FRONTEND_ROOT, { index: false }));
+app.use(express.static(FRONTEND_ROOT, {
+  index: false,
+  setHeaders: (res, filePath) => {
+    const safePath = String(filePath || '').toLowerCase();
+    if (safePath.endsWith('.html') || safePath.endsWith('.js') || safePath.endsWith('.css')) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+  },
+}));
 
 app.get('/', (req, res) => {
   const hostStore = findStoreByHostname(req.hostname);
