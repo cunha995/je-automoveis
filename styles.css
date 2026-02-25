@@ -70,6 +70,7 @@ html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial,Helvetica,sans-
 .vehicle-interest-label{font-size:.78rem;color:#555;font-weight:700}
 .vehicle-interest-list{display:flex;flex-wrap:wrap;gap:6px}
 .vehicle-interest-list-hidden{display:none}
+.vehicle-interest-options.vehicle-interest-list-hidden{display:none}
 .vehicle-interest-link{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;border-radius:999px;background:#f2f7f2;border:1px solid #d7e7d7;color:#1f6f2a;text-decoration:none;font-size:.82rem;font-weight:700}
 .vehicle-interest-link:hover{background:#e8f3e8}
 .vehicle-interest-toggle{justify-self:start;border:1px solid #d7e7d7;background:#fff;color:#1f6f2a;border-radius:999px;padding:5px 10px;font-size:.78rem;font-weight:700;cursor:pointer}
