@@ -108,6 +108,20 @@ function slugifyStore(value) {
     .slice(0, 50);
 }
 
+function normalizePublicBaseUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+
+  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  try {
+    const parsed = new URL(withProtocol);
+    if (!/^https?:$/i.test(parsed.protocol)) return '';
+    return `${parsed.protocol}//${parsed.host}`;
+  } catch {
+    return '';
+  }
+}
+
 function storeFiles(slug) {
   const storeDir = path.join(STORES_DIR, slug);
   return {
@@ -749,17 +763,44 @@ app.get('/api/master/stores', requireMaster, (_req, res) => {
 });
 
 app.post('/api/master/stores', requireMaster, (req, res) => {
-  const { name, slug, storePhone, storeWhatsapp, storeEmail, storeAddress, aboutText, adminUsername, adminPassword } = req.body || {};
+  const {
+    name,
+    slug,
+    storePhone,
+    storeWhatsapp,
+    storeEmail,
+    storeAddress,
+    aboutText,
+    adminUsername,
+    adminPassword,
+    monthlyFee,
+    billingNotes,
+    publicBaseUrl,
+  } = req.body || {};
   const safeName = String(name || '').trim();
   const safeSlug = slugifyStore(slug || safeName);
 
   if (!safeName) return res.status(400).json({ error: 'Nome da loja é obrigatório' });
   if (!safeSlug) return res.status(400).json({ error: 'Slug inválido para a loja' });
 
-  const safeAdminUser = String(adminUsername || `admin-${safeSlug}`).trim();
-  const safeAdminPass = String(adminPassword || 'Loja2026').trim();
+  const safeAdminUser = String(adminUsername || '').trim();
+  const safeAdminPass = String(adminPassword || '').trim();
   if (!safeAdminUser || !safeAdminPass) {
     return res.status(400).json({ error: 'Usuário e senha admin da loja são obrigatórios' });
+  }
+
+  if (safeAdminPass.length < 6) {
+    return res.status(400).json({ error: 'A senha do admin da loja deve ter pelo menos 6 caracteres' });
+  }
+
+  const parsedMonthlyFee = parsePriceValue(monthlyFee);
+  if (!parsedMonthlyFee) {
+    return res.status(400).json({ error: 'Mensalidade inválida. Informe um valor maior que zero.' });
+  }
+
+  const safePublicBaseUrl = normalizePublicBaseUrl(publicBaseUrl);
+  if (String(publicBaseUrl || '').trim() && !safePublicBaseUrl) {
+    return res.status(400).json({ error: 'URL base pública inválida. Use um domínio válido (ex.: loja-cliente.com).' });
   }
 
   const stores = readStores();
@@ -773,6 +814,10 @@ app.post('/api/master/stores', requireMaster, (req, res) => {
     slug: safeSlug,
     adminUsername: safeAdminUser,
     adminPassword: safeAdminPass,
+    monthlyFee: parsedMonthlyFee,
+    billingNotes: String(billingNotes || '').trim(),
+    billingUpdatedAt: new Date().toISOString(),
+    publicBaseUrl: safePublicBaseUrl,
     createdAt: new Date().toISOString(),
   };
 
@@ -794,6 +839,57 @@ app.post('/api/master/stores', requireMaster, (req, res) => {
     publicUrl: `/loja/${safeSlug}`,
     adminUrl: `/admin/${safeSlug}`,
   });
+});
+
+app.put('/api/master/stores/:slug/public-base-url', requireMaster, (req, res) => {
+  const safeSlug = slugifyStore(req.params.slug);
+  if (!safeSlug) return res.status(400).json({ error: 'Slug inválido' });
+
+  const safePublicBaseUrl = normalizePublicBaseUrl(req.body?.publicBaseUrl);
+  if (String(req.body?.publicBaseUrl || '').trim() && !safePublicBaseUrl) {
+    return res.status(400).json({ error: 'URL base pública inválida. Use um domínio válido (ex.: loja-cliente.com).' });
+  }
+
+  const stores = readStores();
+  const storeIndex = stores.findIndex((item) => item.slug === safeSlug);
+  if (storeIndex < 0) {
+    return res.status(404).json({ error: 'Loja não encontrada' });
+  }
+
+  stores[storeIndex] = {
+    ...stores[storeIndex],
+    publicBaseUrl: safePublicBaseUrl,
+  };
+
+  writeStores(stores);
+  return res.json({ ok: true, store: stores[storeIndex] });
+});
+
+app.put('/api/master/stores/:slug/billing', requireMaster, (req, res) => {
+  const safeSlug = slugifyStore(req.params.slug);
+  if (!safeSlug) return res.status(400).json({ error: 'Slug inválido' });
+
+  const { monthlyFee, billingNotes } = req.body || {};
+  const parsedMonthlyFee = parsePriceValue(monthlyFee);
+  if (!parsedMonthlyFee) {
+    return res.status(400).json({ error: 'Mensalidade inválida. Informe um valor maior que zero.' });
+  }
+
+  const stores = readStores();
+  const storeIndex = stores.findIndex((item) => item.slug === safeSlug);
+  if (storeIndex < 0) {
+    return res.status(404).json({ error: 'Loja não encontrada' });
+  }
+
+  stores[storeIndex] = {
+    ...stores[storeIndex],
+    monthlyFee: parsedMonthlyFee,
+    billingNotes: String(billingNotes || '').trim(),
+    billingUpdatedAt: new Date().toISOString(),
+  };
+
+  writeStores(stores);
+  return res.json({ ok: true, store: stores[storeIndex] });
 });
 
 app.post('/api/admin/login', (req, res) => {
@@ -890,6 +986,56 @@ app.put('/api/admin/site-settings', requireAdmin, (req, res) => {
   });
 
   return res.json({ ok: true, settings });
+});
+
+app.put('/api/admin/change-password', requireAdmin, (req, res) => {
+  const storeSlug = scopeSlugFromSession(req);
+  if (!storeSlug) {
+    return res.status(403).json({ error: 'A alteração de senha está disponível apenas para admin de loja.' });
+  }
+
+  const { currentPassword, newPassword } = req.body || {};
+  const safeCurrentPassword = String(currentPassword || '').trim();
+  const safeNewPassword = String(newPassword || '').trim();
+
+  if (!safeCurrentPassword || !safeNewPassword) {
+    return res.status(400).json({ error: 'Informe a senha atual e a nova senha.' });
+  }
+
+  if (safeNewPassword.length < 6) {
+    return res.status(400).json({ error: 'A nova senha deve ter pelo menos 6 caracteres.' });
+  }
+
+  const stores = readStores();
+  const storeIndex = stores.findIndex((item) => item.slug === storeSlug);
+  if (storeIndex < 0) {
+    return res.status(404).json({ error: 'Loja não encontrada.' });
+  }
+
+  const store = stores[storeIndex];
+  const expectedPass = String(store.adminPassword || 'Loja2026');
+  if (safeCurrentPassword !== expectedPass) {
+    return res.status(401).json({ error: 'Senha atual inválida.' });
+  }
+
+  if (safeCurrentPassword === safeNewPassword) {
+    return res.status(400).json({ error: 'A nova senha deve ser diferente da senha atual.' });
+  }
+
+  stores[storeIndex] = {
+    ...store,
+    adminPassword: safeNewPassword,
+  };
+  writeStores(stores);
+
+  const currentToken = getBearerToken(req);
+  for (const [token, session] of adminSessions.entries()) {
+    if (token !== currentToken && session?.storeSlug === storeSlug) {
+      adminSessions.delete(token);
+    }
+  }
+
+  return res.json({ ok: true, message: 'Senha alterada com sucesso.' });
 });
 
 app.post('/api/admin/vehicles', requireAdmin, vehicleUpload.fields([

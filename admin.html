@@ -46,6 +46,7 @@
           <a href="#sec-vendedores">Vendedores</a>
           <a href="#sec-banners">Banners/Ofertas</a>
           <a href="#sec-config">Sobre e Contato</a>
+          <a href="#sec-senha">Senha do painel</a>
           <hr>
           <a href="#vehicle-model">Campo: Modelo</a>
           <a href="#vehicle-price">Campo: Preço</a>
@@ -222,6 +223,30 @@
         </form>
 
         <p id="settingsMessage" class="admin-message"></p>
+      </section>
+
+      <section id="sec-senha" class="admin-card hidden">
+        <div class="admin-head">
+          <h2>Alterar senha do painel</h2>
+        </div>
+
+        <form id="passwordForm" class="admin-form grid-2">
+          <label>Senha atual
+            <input type="password" name="currentPassword" required placeholder="Digite a senha atual">
+          </label>
+          <label>Nova senha
+            <input type="password" name="newPassword" required minlength="6" placeholder="Mínimo 6 caracteres">
+          </label>
+          <label class="full">Confirmar nova senha
+            <input type="password" name="confirmPassword" required minlength="6" placeholder="Repita a nova senha">
+          </label>
+
+          <div class="full admin-actions">
+            <button class="btn-primary" type="submit">Alterar senha</button>
+          </div>
+        </form>
+
+        <p id="passwordMessage" class="admin-message"></p>
       </section>
       </div>
     </section>

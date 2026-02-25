@@ -55,10 +55,19 @@
             <input type="text" name="slug" placeholder="Ex.: auto-center-silva">
           </label>
           <label>Usuário do admin da loja
-            <input type="text" name="adminUsername" placeholder="Ex.: admin-auto-center-silva">
+            <input type="text" name="adminUsername" required placeholder="Ex.: admin-auto-center-silva">
           </label>
           <label>Senha do admin da loja
-            <input type="text" name="adminPassword" placeholder="Ex.: Loja2026">
+            <input type="text" name="adminPassword" required minlength="6" placeholder="Ex.: Loja2026">
+          </label>
+          <label>Mensalidade (R$)
+            <input type="number" name="monthlyFee" required min="1" step="1" placeholder="Ex.: 350">
+          </label>
+          <label>Observação de cobrança
+            <input type="text" name="billingNotes" placeholder="Ex.: valor negociado com cliente">
+          </label>
+          <label>Domínio do cliente (opcional)
+            <input type="text" name="publicBaseUrl" placeholder="Ex.: loja-cliente.com ou https://loja-cliente.com">
           </label>
           <label>Telefone
             <input type="text" name="storePhone" placeholder="Ex.: (41) 99999-9999">

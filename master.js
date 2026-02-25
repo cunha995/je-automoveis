@@ -36,6 +36,37 @@ function setMessage(target, message, isError = false) {
   target.style.color = isError ? '#b31818' : '#267529';
 }
 
+function formatCurrency(value) {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    maximumFractionDigits: 0,
+  }).format(Number(value) || 0);
+}
+
+function normalizeBaseUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  try {
+    const parsed = new URL(withProtocol);
+    if (!/^https?:$/i.test(parsed.protocol)) return '';
+    return `${parsed.protocol}//${parsed.host}`;
+  } catch (_err) {
+    return '';
+  }
+}
+
+function buildStorePublicUrl(store) {
+  const base = normalizeBaseUrl(store?.publicBaseUrl) || API_BASE;
+  return `${base}/loja/${store.slug}`;
+}
+
+function buildStoreAdminUrl(store) {
+  const base = normalizeBaseUrl(store?.publicBaseUrl) || API_BASE;
+  return `${base}/admin/${store.slug}`;
+}
+
 function safeSlug(value) {
   return String(value || '')
     .normalize('NFD')
@@ -67,20 +98,114 @@ async function loadStores() {
   }
 
   storeList.innerHTML = stores.map((store) => {
-    const publicUrl = `${API_BASE}/loja/${store.slug}`;
-    const adminUrl = `${API_BASE}/admin/${store.slug}`;
+    const publicUrl = buildStorePublicUrl(store);
+    const adminUrl = buildStoreAdminUrl(store);
     return `
       <article class="admin-item">
         <div class="master-meta">
           <h3>${store.name}</h3>
           <p>Slug: ${store.slug}</p>
           <p>Admin: ${store.adminUsername || '-'}</p>
+          <p>Mensalidade: <strong>${formatCurrency(store.monthlyFee)}</strong></p>
+          <p>Cobrança: ${store.billingNotes || 'Sem observação'}</p>
+          <p>Domínio cliente: ${store.publicBaseUrl || 'padrão do sistema'}</p>
           <a class="master-link" target="_blank" rel="noopener noreferrer" href="${publicUrl}">${publicUrl}</a>
           <a class="master-link" target="_blank" rel="noopener noreferrer" href="${adminUrl}">${adminUrl}</a>
+        </div>
+        <div class="admin-item-actions">
+          <button class="btn-edit" type="button" data-edit-billing="${store.slug}">Editar mensalidade</button>
+          <button class="btn-edit" type="button" data-edit-public-base-url="${store.slug}">Editar domínio</button>
         </div>
       </article>
     `;
   }).join('');
+
+  storeList.querySelectorAll('[data-edit-billing]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const currentStore = stores.find((item) => item.slug === btn.dataset.editBilling);
+      if (!currentStore) return;
+
+      const feeInput = window.prompt('Nova mensalidade (apenas números):', String(Math.round(Number(currentStore.monthlyFee) || 0)));
+      if (feeInput === null) return;
+
+      const parsedFee = Number(String(feeInput).replace(/[^\d]/g, ''));
+      if (!Number.isFinite(parsedFee) || parsedFee <= 0) {
+        setMessage(storeMessage, 'Mensalidade inválida. Informe um valor maior que zero.', true);
+        return;
+      }
+
+      const notesInput = window.prompt('Observação da cobrança:', currentStore.billingNotes || '');
+      if (notesInput === null) return;
+
+      const res = await fetch(`${API_BASE}/api/master/stores/${currentStore.slug}/billing`, {
+        method: 'PUT',
+        headers: {
+          ...authHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          monthlyFee: parsedFee,
+          billingNotes: notesInput,
+        }),
+      });
+
+      if (res.status === 401) {
+        setToken('');
+        showPanel(false);
+        setMessage(loginMessage, 'Sessão master expirada. Faça login novamente.', true);
+        return;
+      }
+
+      const data = await res.json();
+      if (!res.ok) {
+        setMessage(storeMessage, data.error || 'Falha ao atualizar mensalidade.', true);
+        return;
+      }
+
+      setMessage(storeMessage, `Mensalidade da loja ${currentStore.name} atualizada com sucesso.`);
+      loadStores();
+    });
+  });
+
+  storeList.querySelectorAll('[data-edit-public-base-url]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const currentStore = stores.find((item) => item.slug === btn.dataset.editPublicBaseUrl);
+      if (!currentStore) return;
+
+      const baseInput = window.prompt(
+        'Domínio do cliente (deixe vazio para usar domínio padrão do sistema):',
+        currentStore.publicBaseUrl || ''
+      );
+      if (baseInput === null) return;
+
+      const res = await fetch(`${API_BASE}/api/master/stores/${currentStore.slug}/public-base-url`, {
+        method: 'PUT',
+        headers: {
+          ...authHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          publicBaseUrl: baseInput,
+        }),
+      });
+
+      if (res.status === 401) {
+        setToken('');
+        showPanel(false);
+        setMessage(loginMessage, 'Sessão master expirada. Faça login novamente.', true);
+        return;
+      }
+
+      const data = await res.json();
+      if (!res.ok) {
+        setMessage(storeMessage, data.error || 'Falha ao atualizar domínio da loja.', true);
+        return;
+      }
+
+      setMessage(storeMessage, `Domínio da loja ${currentStore.name} atualizado com sucesso.`);
+      loadStores();
+    });
+  });
 }
 
 loginForm.addEventListener('submit', async (event) => {
@@ -117,6 +242,9 @@ storeForm.addEventListener('submit', async (event) => {
     slug: safeSlug(storeForm.elements.slug.value || storeForm.elements.name.value),
     adminUsername: storeForm.elements.adminUsername.value,
     adminPassword: storeForm.elements.adminPassword.value,
+    monthlyFee: storeForm.elements.monthlyFee.value,
+    billingNotes: storeForm.elements.billingNotes.value,
+    publicBaseUrl: storeForm.elements.publicBaseUrl.value,
     storePhone: storeForm.elements.storePhone.value,
     storeWhatsapp: storeForm.elements.storeWhatsapp.value,
     storeEmail: storeForm.elements.storeEmail.value,
@@ -146,9 +274,9 @@ storeForm.addEventListener('submit', async (event) => {
     return;
   }
 
-  const fullUrl = `${API_BASE}${data.publicUrl}`;
-  const fullAdminUrl = `${API_BASE}${data.adminUrl}`;
-  setMessage(storeMessage, `Loja criada! Site: ${fullUrl} | Admin: ${fullAdminUrl}`);
+  const fullUrl = buildStorePublicUrl(data.store || payload);
+  const fullAdminUrl = buildStoreAdminUrl(data.store || payload);
+  setMessage(storeMessage, `Loja criada! Site: ${fullUrl} | Admin: ${fullAdminUrl} | Usuário: ${payload.adminUsername} | Senha: ${payload.adminPassword}`);
   storeForm.reset();
   loadStores();
 });

@@ -26,6 +26,9 @@ const cancelBannerEditBtn = document.getElementById('cancelBannerEditBtn');
 
 const settingsForm = document.getElementById('settingsForm');
 const settingsMessage = document.getElementById('settingsMessage');
+const passwordSection = document.getElementById('sec-senha');
+const passwordForm = document.getElementById('passwordForm');
+const passwordMessage = document.getElementById('passwordMessage');
 
 const logoutBtn = document.getElementById('logoutBtn');
 
@@ -63,6 +66,11 @@ function applyStoreContext() {
 
   const loginTitle = document.querySelector('#loginSection h1');
   if (loginTitle) loginTitle.textContent = `Entrar no painel da loja: ${STORE_SLUG}`;
+}
+
+function applyStorePasswordSectionVisibility() {
+  if (!passwordSection) return;
+  passwordSection.classList.toggle('hidden', !STORE_SLUG);
 }
 
 function setMessage(target, message, isError = false) {
@@ -539,6 +547,62 @@ settingsForm.addEventListener('submit', async (event) => {
   loadSiteSettings();
 });
 
+if (passwordForm) {
+  passwordForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const currentPassword = String(passwordForm.elements.currentPassword.value || '').trim();
+    const newPassword = String(passwordForm.elements.newPassword.value || '').trim();
+    const confirmPassword = String(passwordForm.elements.confirmPassword.value || '').trim();
+
+    if (!STORE_SLUG) {
+      setMessage(passwordMessage, 'Esta opção está disponível apenas no painel de cada loja.', true);
+      return;
+    }
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setMessage(passwordMessage, 'Preencha todos os campos de senha.', true);
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setMessage(passwordMessage, 'A nova senha deve ter pelo menos 6 caracteres.', true);
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setMessage(passwordMessage, 'A confirmação da nova senha não confere.', true);
+      return;
+    }
+
+    const res = await fetch(`${API_BASE}/api/admin/change-password`, {
+      method: 'PUT',
+      headers: {
+        ...authHeaders(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        currentPassword,
+        newPassword,
+      }),
+    });
+
+    if (handleUnauthorized(res)) {
+      alert('Sessão expirada. Faça login novamente para alterar a senha.');
+      return;
+    }
+
+    const data = await safeReadJson(res);
+    if (!res.ok) {
+      setMessage(passwordMessage, data.error || 'Falha ao alterar senha.', true);
+      return;
+    }
+
+    passwordForm.reset();
+    setMessage(passwordMessage, data.message || 'Senha alterada com sucesso.');
+  });
+}
+
 logoutBtn.addEventListener('click', async () => {
   try {
     await fetch(`${API_BASE}/api/admin/logout`, {
@@ -568,6 +632,7 @@ cancelBannerEditBtn.addEventListener('click', () => {
 
 (function init() {
   applyStoreContext();
+  applyStorePasswordSectionVisibility();
   const hasToken = !!getToken();
   showPanel(hasToken);
   if (hasToken) {
