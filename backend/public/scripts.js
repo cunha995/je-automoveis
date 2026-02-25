@@ -99,6 +99,18 @@ function applyStoreBrand(store) {
   document.querySelectorAll('.brand span').forEach((node) => {
     node.textContent = store.name;
   });
+  const initials = String(store.name)
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0].toUpperCase())
+    .join('') || 'LO';
+  const logoSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><rect width="48" height="48" rx="6" fill="#d32f2f"/><text x="50%" y="55%" text-anchor="middle" fill="#ffffff" font-size="16" font-family="Arial" font-weight="700">${initials}</text></svg>`;
+  document.querySelectorAll('.brand .logo').forEach((img) => {
+    img.src = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(logoSvg)}`;
+    img.alt = `${store.name} logo`;
+  });
   const footerText = document.querySelector('.site-footer p');
   if (footerText) footerText.textContent = `© ${store.name} — Todos os direitos reservados`;
   const aboutTitle = document.getElementById('aboutTitle');
