@@ -116,6 +116,14 @@ function clearBannerForm() {
   bannerForm.elements.isActive.value = 'true';
 }
 
+function sanitizeYearInput(value) {
+  return String(value || '').replace(/\D/g, '').slice(0, 4);
+}
+
+function sanitizePriceInput(value) {
+  return String(value || '').replace(/\./g, '').replace(',', '.').replace(/[^\d.]/g, '').trim();
+}
+
 function handleUnauthorized(res) {
   if (res.status !== 401) return false;
   setToken('');
@@ -379,6 +387,22 @@ vehicleForm.addEventListener('submit', async (event) => {
     const endpoint = id ? `${API_BASE}/api/admin/vehicles/${id}` : `${API_BASE}/api/admin/vehicles`;
     const method = id ? 'PUT' : 'POST';
     const formData = new FormData(vehicleForm);
+
+    const rawYear = formData.get('year');
+    const yearSanitized = sanitizeYearInput(rawYear);
+    if (!yearSanitized || yearSanitized.length !== 4 || Number(yearSanitized) < 1900 || Number(yearSanitized) > 2100) {
+      setMessage(vehicleMessage, 'Ano inválido. Use 4 dígitos entre 1900 e 2100.', true);
+      return;
+    }
+    formData.set('year', yearSanitized);
+
+    const rawPrice = formData.get('price');
+    const priceSanitized = sanitizePriceInput(rawPrice);
+    if (!priceSanitized || Number(priceSanitized) <= 0) {
+      setMessage(vehicleMessage, 'Preço inválido. Informe um valor maior que zero.', true);
+      return;
+    }
+    formData.set('price', priceSanitized);
 
     if (submitBtn) {
       submitBtn.disabled = true;

@@ -153,6 +153,23 @@ function writeCollection(filePath, values) {
   fs.writeFileSync(filePath, JSON.stringify(values, null, 2), 'utf-8');
 }
 
+function parseYearValue(value) {
+  const digits = String(value ?? '').replace(/\D/g, '');
+  if (!digits) return null;
+  const parsed = Number(digits);
+  if (!Number.isInteger(parsed)) return null;
+  if (parsed < 1900 || parsed > 2100) return null;
+  return parsed;
+}
+
+function parsePriceValue(value) {
+  const normalized = String(value ?? '').replace(/\./g, '').replace(',', '.').replace(/[^\d.]/g, '').trim();
+  if (!normalized) return null;
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return parsed;
+}
+
 async function uploadToCloudinary(file) {
   if (!file || !file.buffer) return null;
 
@@ -540,6 +557,16 @@ app.post('/api/admin/vehicles', requireAdmin, vehicleUpload.fields([
     return res.status(400).json({ error: 'Campos obrigatórios: model, year, price' });
   }
 
+  const parsedYear = parseYearValue(year);
+  if (!parsedYear) {
+    return res.status(400).json({ error: 'Ano inválido. Use 4 dígitos entre 1900 e 2100.' });
+  }
+
+  const parsedPrice = parsePriceValue(price);
+  if (!parsedPrice) {
+    return res.status(400).json({ error: 'Preço inválido. Informe um valor maior que zero.' });
+  }
+
   let media = [];
   try {
     media = await persistVehicleMedia(req);
@@ -555,11 +582,11 @@ app.post('/api/admin/vehicles', requireAdmin, vehicleUpload.fields([
   const vehicle = {
     id: crypto.randomUUID(),
     model: String(model).trim(),
-    year: Number(year),
+    year: parsedYear,
     km: String(km || '').trim(),
     fuel: String(fuel || '').trim() || 'Flex',
     transmission: String(transmission || '').trim() || 'Manual',
-    price: Number(price),
+    price: parsedPrice,
     status: isSold ? 'Vendido' : (String(status || 'Disponível').trim() || 'Disponível'),
     sold: isSold,
     image: firstImage ? firstImage.url : '',
@@ -593,14 +620,24 @@ app.put('/api/admin/vehicles/:id', requireAdmin, vehicleUpload.fields([
     ? incomingSold
     : (current.sold === true || /vendid/i.test(String(current.status || '')));
 
+  const parsedYear = year !== undefined ? parseYearValue(year) : current.year;
+  if (year !== undefined && !parsedYear) {
+    return res.status(400).json({ error: 'Ano inválido. Use 4 dígitos entre 1900 e 2100.' });
+  }
+
+  const parsedPrice = price !== undefined ? parsePriceValue(price) : current.price;
+  if (price !== undefined && !parsedPrice) {
+    return res.status(400).json({ error: 'Preço inválido. Informe um valor maior que zero.' });
+  }
+
   const updated = {
     ...current,
     model: model !== undefined ? String(model).trim() : current.model,
-    year: year !== undefined ? Number(year) : current.year,
+    year: parsedYear,
     km: km !== undefined ? String(km).trim() : current.km,
     fuel: fuel !== undefined ? String(fuel).trim() : current.fuel,
     transmission: transmission !== undefined ? String(transmission).trim() : current.transmission,
-    price: price !== undefined ? Number(price) : current.price,
+    price: parsedPrice,
     status: soldValue
       ? 'Vendido'
       : (status !== undefined ? String(status).trim() : (current.status || 'Disponível')),
