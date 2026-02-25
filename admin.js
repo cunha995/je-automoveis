@@ -74,7 +74,7 @@ function toAbsoluteImage(pathValue) {
   if (!pathValue) return 'images/carros/carro-01.svg';
   if (pathValue.startsWith('http://') || pathValue.startsWith('https://')) return pathValue;
   if (pathValue.startsWith('/')) return `${API_BASE}${pathValue}`;
-  return pathValue;
+  return `${API_BASE}/${String(pathValue).replace(/^\/+/, '')}`;
 }
 
 function normalizeVehicleMedia(vehicle) {

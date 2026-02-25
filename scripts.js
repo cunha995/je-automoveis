@@ -136,7 +136,7 @@ function toAbsoluteImage(pathValue, fallbackTitle = 'JE Automóveis') {
   if (!pathValue) return createFallbackImage(fallbackTitle);
   if (pathValue.startsWith('http://') || pathValue.startsWith('https://') || pathValue.startsWith('data:')) return pathValue;
   if (pathValue.startsWith('/')) return `${BACKEND_URL}${pathValue}`;
-  return pathValue;
+  return `${BACKEND_URL}/${String(pathValue).replace(/^\/+/, '')}`;
 }
 
 function normalizeVehicleMedia(vehicle) {
