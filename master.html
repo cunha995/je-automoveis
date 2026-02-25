@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Painel Master — JE Automóveis</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="master.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="/" class="brand">
+        <img src="images/logo.svg" alt="JE Automóveis logo" class="logo">
+        <span>Painel Master</span>
+      </a>
+      <nav class="main-nav">
+        <a href="/admin">Painel Loja</a>
+        <a href="/">Ver site principal</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container admin-main">
+    <section id="masterLoginSection" class="admin-card">
+      <h1>Login Master</h1>
+      <p>Crie novos sites para outras lojas.</p>
+      <form id="masterLoginForm" class="admin-form grid-2">
+        <label>Usuário
+          <input type="text" name="username" required placeholder="master">
+        </label>
+        <label>Senha
+          <input type="password" name="password" required placeholder="••••••••">
+        </label>
+        <div class="full">
+          <button class="btn-primary" type="submit">Entrar</button>
+        </div>
+      </form>
+      <p id="masterLoginMessage" class="admin-message"></p>
+    </section>
+
+    <section id="masterPanelSection" class="hidden">
+      <section class="admin-card">
+        <div class="admin-head">
+          <h2>Nova Loja</h2>
+          <button id="masterLogoutBtn" type="button" class="btn-secondary">Sair</button>
+        </div>
+
+        <form id="masterStoreForm" class="admin-form grid-2">
+          <label>Nome da loja
+            <input type="text" name="name" required placeholder="Ex.: Auto Center Silva">
+          </label>
+          <label>Slug da loja (URL)
+            <input type="text" name="slug" placeholder="Ex.: auto-center-silva">
+          </label>
+          <label>Telefone
+            <input type="text" name="storePhone" placeholder="Ex.: (41) 99999-9999">
+          </label>
+          <label>WhatsApp (somente números)
+            <input type="text" name="storeWhatsapp" placeholder="Ex.: 5541999999999">
+          </label>
+          <label class="full">Email
+            <input type="email" name="storeEmail" placeholder="contato@loja.com">
+          </label>
+          <label class="full">Endereço
+            <input type="text" name="storeAddress" placeholder="Rua Exemplo, 123 — Cidade">
+          </label>
+          <label class="full">Texto inicial sobre a loja
+            <input type="text" name="aboutText" placeholder="Atendimento especializado com transparência.">
+          </label>
+          <div class="full admin-actions">
+            <button class="btn-primary" type="submit">Criar loja e site</button>
+          </div>
+        </form>
+        <p id="masterStoreMessage" class="admin-message"></p>
+      </section>
+
+      <section class="admin-card">
+        <h2>Lojas criadas</h2>
+        <div id="masterStoreList" class="admin-list"></div>
+      </section>
+    </section>
+  </main>
+
+  <script src="master.js"></script>
+</body>
+</html>

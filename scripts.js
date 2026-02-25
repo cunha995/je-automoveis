@@ -6,6 +6,8 @@
 // If left empty the frontend will POST to a relative `/contact` path.
 const BACKEND_URL = 'https://je-automoveis.onrender.com';
 let STORE_WHATSAPP_NUMBER = '5500000000000';
+const PATH_PARTS = window.location.pathname.split('/').filter(Boolean);
+const STORE_SLUG = PATH_PARTS[0] === 'loja' ? PATH_PARTS[1] : '';
 
 const fallbackVehicles = [
   {
@@ -83,6 +85,25 @@ let currentBannerIndex = 0;
 let bannerIntervalId = null;
 let currentVehiclesCache = [];
 let vehicleCarouselTimers = [];
+
+function buildApiUrl(resource) {
+  if (STORE_SLUG) {
+    return `${BACKEND_URL}/api/public/${STORE_SLUG}/${resource}`;
+  }
+  return `${BACKEND_URL}/api/${resource}`;
+}
+
+function applyStoreBrand(store) {
+  if (!store || !store.name) return;
+  document.title = `${store.name} — Venda, Troca e Consignado`;
+  document.querySelectorAll('.brand span').forEach((node) => {
+    node.textContent = store.name;
+  });
+  const aboutTitle = document.getElementById('aboutTitle');
+  if (aboutTitle && !aboutTitle.textContent.includes(store.name)) {
+    aboutTitle.textContent = `Sobre a ${store.name}`;
+  }
+}
 
 const fallbackSiteSettings = {
   aboutTitle: 'Sobre a JE Automóveis',
@@ -371,10 +392,11 @@ function renderSiteSettings(settings) {
 
 async function loadVehicles() {
   try {
-    const url = (BACKEND_URL || '') + '/api/vehicles?t=' + Date.now();
+    const url = buildApiUrl('vehicles') + '?t=' + Date.now();
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) throw new Error('Falha ao carregar veículos');
     const data = await res.json();
+    applyStoreBrand(data.store);
     const vehicles = Array.isArray(data.vehicles) ? data.vehicles : [];
     if (vehicles.length) {
       renderVehicles(vehicles);
@@ -389,10 +411,11 @@ async function loadVehicles() {
 
 async function loadSellers() {
   try {
-    const url = (BACKEND_URL || '') + '/api/sellers';
+    const url = buildApiUrl('sellers');
     const res = await fetch(url);
     if (!res.ok) throw new Error('Falha ao carregar vendedores');
     const data = await res.json();
+    applyStoreBrand(data.store);
     const sellers = Array.isArray(data.sellers) ? data.sellers : [];
     renderSellers(sellers.length ? sellers : fallbackSellers);
   } catch (err) {
@@ -403,10 +426,11 @@ async function loadSellers() {
 
 async function loadBanners() {
   try {
-    const url = (BACKEND_URL || '') + '/api/banners';
+    const url = buildApiUrl('banners');
     const res = await fetch(url);
     if (!res.ok) throw new Error('Falha ao carregar banners');
     const data = await res.json();
+    applyStoreBrand(data.store);
     const banners = Array.isArray(data.banners) ? data.banners : [];
     renderBanners(banners.length ? banners : fallbackBanners);
   } catch (err) {
@@ -417,10 +441,11 @@ async function loadBanners() {
 
 async function loadSiteSettings() {
   try {
-    const url = (BACKEND_URL || '') + '/api/site-settings';
+    const url = buildApiUrl('site-settings');
     const res = await fetch(url);
     if (!res.ok) throw new Error('Falha ao carregar configurações da loja');
     const data = await res.json();
+    applyStoreBrand(data.store);
     renderSiteSettings(data.settings || fallbackSiteSettings);
   } catch (err) {
     console.error('Erro ao carregar configurações da loja:', err);

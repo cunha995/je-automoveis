@@ -21,12 +21,17 @@ const VEHICLES_FILE = path.join(DATA_DIR, 'vehicles.json');
 const SELLERS_FILE = path.join(DATA_DIR, 'sellers.json');
 const BANNERS_FILE = path.join(DATA_DIR, 'banners.json');
 const SITE_SETTINGS_FILE = path.join(DATA_DIR, 'site-settings.json');
+const STORES_FILE = path.join(DATA_DIR, 'stores.json');
+const STORES_DIR = path.join(DATA_DIR, 'stores');
 const UPLOADS_DIR = path.join(FRONTEND_ROOT, 'uploads');
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'je2026';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Je2026';
+const MASTER_USERNAME = process.env.MASTER_USERNAME || 'master';
+const MASTER_PASSWORD = process.env.MASTER_PASSWORD || 'Master2026';
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
 const adminSessions = new Map();
+const masterSessions = new Map();
 
 const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || '';
 const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY || '';
@@ -41,6 +46,7 @@ const PORT = process.env.PORT || 3000;
 
 function ensureStorage() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  if (!fs.existsSync(STORES_DIR)) fs.mkdirSync(STORES_DIR, { recursive: true });
   if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
   if (!fs.existsSync(VEHICLES_FILE)) {
     fs.writeFileSync(VEHICLES_FILE, '[]', 'utf-8');
@@ -53,6 +59,84 @@ function ensureStorage() {
   }
   if (!fs.existsSync(SITE_SETTINGS_FILE)) {
     fs.writeFileSync(SITE_SETTINGS_FILE, JSON.stringify(defaultSiteSettings(), null, 2), 'utf-8');
+  }
+  if (!fs.existsSync(STORES_FILE)) {
+    fs.writeFileSync(STORES_FILE, '[]', 'utf-8');
+  }
+}
+
+function slugifyStore(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+    .slice(0, 50);
+}
+
+function storeFiles(slug) {
+  const storeDir = path.join(STORES_DIR, slug);
+  return {
+    storeDir,
+    vehiclesFile: path.join(storeDir, 'vehicles.json'),
+    sellersFile: path.join(storeDir, 'sellers.json'),
+    bannersFile: path.join(storeDir, 'banners.json'),
+    settingsFile: path.join(storeDir, 'site-settings.json'),
+  };
+}
+
+function ensureStoreData(slug, settingsOverride = {}) {
+  ensureStorage();
+  const files = storeFiles(slug);
+  if (!fs.existsSync(files.storeDir)) fs.mkdirSync(files.storeDir, { recursive: true });
+  if (!fs.existsSync(files.vehiclesFile)) fs.writeFileSync(files.vehiclesFile, '[]', 'utf-8');
+  if (!fs.existsSync(files.sellersFile)) fs.writeFileSync(files.sellersFile, '[]', 'utf-8');
+  if (!fs.existsSync(files.bannersFile)) fs.writeFileSync(files.bannersFile, '[]', 'utf-8');
+  if (!fs.existsSync(files.settingsFile)) {
+    fs.writeFileSync(files.settingsFile, JSON.stringify({ ...defaultSiteSettings(), ...settingsOverride }, null, 2), 'utf-8');
+  }
+  return files;
+}
+
+function readStores() {
+  return readCollection(STORES_FILE);
+}
+
+function writeStores(stores) {
+  writeCollection(STORES_FILE, stores);
+}
+
+function readStoreVehicles(slug) {
+  const files = ensureStoreData(slug);
+  return readCollection(files.vehiclesFile);
+}
+
+function readStoreSellers(slug) {
+  const files = ensureStoreData(slug);
+  return readCollection(files.sellersFile);
+}
+
+function readStoreBanners(slug) {
+  const files = ensureStoreData(slug);
+  return readCollection(files.bannersFile);
+}
+
+function readStoreSettings(slug) {
+  const files = ensureStoreData(slug);
+  const defaults = defaultSiteSettings();
+  const raw = fs.readFileSync(files.settingsFile, 'utf-8');
+  try {
+    const parsed = JSON.parse(raw);
+    return {
+      ...defaults,
+      ...(parsed || {}),
+      aboutHighlights: Array.isArray(parsed?.aboutHighlights)
+        ? parsed.aboutHighlights.filter((item) => String(item || '').trim())
+        : defaults.aboutHighlights,
+    };
+  } catch {
+    return defaults;
   }
 }
 
@@ -396,6 +480,16 @@ function requireAdmin(req, res, next) {
   return next();
 }
 
+function requireMaster(req, res, next) {
+  removeExpiredSessions();
+  const token = getBearerToken(req);
+  if (!token) return res.status(401).json({ error: 'Não autenticado' });
+  const session = masterSessions.get(token);
+  if (!session) return res.status(401).json({ error: 'Sessão master inválida ou expirada' });
+  req.master = session;
+  return next();
+}
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 8 * 1024 * 1024 },
@@ -464,6 +558,124 @@ app.get('/api/banners', (_req, res) => {
 app.get('/api/site-settings', (_req, res) => {
   const settings = readSiteSettings();
   res.json({ ok: true, settings });
+});
+
+app.get('/api/public/:slug/vehicles', (req, res) => {
+  const slug = slugifyStore(req.params.slug);
+  if (!slug) return res.status(400).json({ error: 'Slug inválido' });
+
+  const store = readStores().find((item) => item.slug === slug);
+  if (!store) return res.status(404).json({ error: 'Loja não encontrada' });
+
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+
+  const vehicles = readStoreVehicles(slug).map((vehicle) => {
+    const normalized = normalizeVehicleMedia(vehicle);
+    return {
+      ...normalized,
+      sold: normalized.sold === true || /vendid/i.test(String(normalized.status || '')),
+    };
+  });
+
+  return res.json({ ok: true, vehicles, store });
+});
+
+app.get('/api/public/:slug/sellers', (req, res) => {
+  const slug = slugifyStore(req.params.slug);
+  if (!slug) return res.status(400).json({ error: 'Slug inválido' });
+  const store = readStores().find((item) => item.slug === slug);
+  if (!store) return res.status(404).json({ error: 'Loja não encontrada' });
+
+  const sellers = readStoreSellers(slug);
+  return res.json({ ok: true, sellers, store });
+});
+
+app.get('/api/public/:slug/banners', (req, res) => {
+  const slug = slugifyStore(req.params.slug);
+  if (!slug) return res.status(400).json({ error: 'Slug inválido' });
+  const store = readStores().find((item) => item.slug === slug);
+  if (!store) return res.status(404).json({ error: 'Loja não encontrada' });
+
+  const banners = readStoreBanners(slug)
+    .filter((banner) => banner.isActive !== false)
+    .sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+
+  return res.json({ ok: true, banners, store });
+});
+
+app.get('/api/public/:slug/site-settings', (req, res) => {
+  const slug = slugifyStore(req.params.slug);
+  if (!slug) return res.status(400).json({ error: 'Slug inválido' });
+  const store = readStores().find((item) => item.slug === slug);
+  if (!store) return res.status(404).json({ error: 'Loja não encontrada' });
+
+  const settings = readStoreSettings(slug);
+  return res.json({ ok: true, settings, store });
+});
+
+app.post('/api/master/login', (req, res) => {
+  const { username, password } = req.body || {};
+  if (username !== MASTER_USERNAME || password !== MASTER_PASSWORD) {
+    return res.status(401).json({ error: 'Credenciais master inválidas' });
+  }
+
+  const token = createToken();
+  const expiresAt = Date.now() + TOKEN_TTL_MS;
+  masterSessions.set(token, { username, expiresAt });
+
+  return res.json({ ok: true, token, expiresAt });
+});
+
+app.post('/api/master/logout', requireMaster, (req, res) => {
+  const token = getBearerToken(req);
+  if (token) masterSessions.delete(token);
+  return res.json({ ok: true });
+});
+
+app.get('/api/master/stores', requireMaster, (_req, res) => {
+  const stores = readStores().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  return res.json({ ok: true, stores });
+});
+
+app.post('/api/master/stores', requireMaster, (req, res) => {
+  const { name, slug, storePhone, storeWhatsapp, storeEmail, storeAddress, aboutText } = req.body || {};
+  const safeName = String(name || '').trim();
+  const safeSlug = slugifyStore(slug || safeName);
+
+  if (!safeName) return res.status(400).json({ error: 'Nome da loja é obrigatório' });
+  if (!safeSlug) return res.status(400).json({ error: 'Slug inválido para a loja' });
+
+  const stores = readStores();
+  if (stores.some((item) => item.slug === safeSlug)) {
+    return res.status(409).json({ error: 'Já existe uma loja com este slug' });
+  }
+
+  const store = {
+    id: crypto.randomUUID(),
+    name: safeName,
+    slug: safeSlug,
+    createdAt: new Date().toISOString(),
+  };
+
+  stores.unshift(store);
+  writeStores(stores);
+
+  ensureStoreData(safeSlug, {
+    aboutTitle: `Sobre a ${safeName}`,
+    aboutText: String(aboutText || '').trim() || defaultSiteSettings().aboutText,
+    storePhone: String(storePhone || '').trim() || defaultSiteSettings().storePhone,
+    storeWhatsapp: String(storeWhatsapp || '').trim() || defaultSiteSettings().storeWhatsapp,
+    storeEmail: String(storeEmail || '').trim() || defaultSiteSettings().storeEmail,
+    storeAddress: String(storeAddress || '').trim() || defaultSiteSettings().storeAddress,
+  });
+
+  return res.status(201).json({
+    ok: true,
+    store,
+    publicUrl: `/loja/${safeSlug}`,
+  });
 });
 
 app.post('/api/admin/login', (req, res) => {
@@ -891,6 +1103,17 @@ app.get('/admin', (_req, res) => {
   res.sendFile(path.join(FRONTEND_ROOT, 'admin.html'));
 });
 
+app.get('/master', (_req, res) => {
+  res.sendFile(path.join(FRONTEND_ROOT, 'master.html'));
+});
+
+app.get('/loja/:slug', (req, res) => {
+  const slug = slugifyStore(req.params.slug);
+  const exists = readStores().some((item) => item.slug === slug);
+  if (!exists) return res.status(404).sendFile(path.join(FRONTEND_ROOT, 'index.html'));
+  return res.sendFile(path.join(FRONTEND_ROOT, 'index.html'));
+});
+
 app.use('/uploads', express.static(UPLOADS_DIR));
 
 app.use(express.static(FRONTEND_ROOT));
@@ -904,7 +1127,8 @@ app.get('*', (req, res) => {
     req.path.startsWith('/contact') ||
     req.path.startsWith('/health') ||
     req.path.startsWith('/api/') ||
-    req.path.startsWith('/uploads/')
+    req.path.startsWith('/uploads/') ||
+    req.path.startsWith('/loja/')
   ) {
     return res.status(404).json({ error: 'Rota não encontrada' });
   }
