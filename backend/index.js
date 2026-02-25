@@ -122,6 +122,22 @@ function normalizePublicBaseUrl(value) {
   }
 }
 
+function findStoreByHostname(hostname) {
+  const safeHost = String(hostname || '').toLowerCase().trim();
+  if (!safeHost) return null;
+  const stores = readStores();
+  return stores.find((item) => {
+    const base = normalizePublicBaseUrl(item?.publicBaseUrl || '');
+    if (!base) return false;
+    try {
+      const parsed = new URL(base);
+      return parsed.hostname.toLowerCase() === safeHost;
+    } catch {
+      return false;
+    }
+  }) || null;
+}
+
 function storeFiles(slug) {
   const storeDir = path.join(STORES_DIR, slug);
   return {
@@ -1441,9 +1457,13 @@ app.get('/loja/:slug', (req, res) => {
 
 app.use('/uploads', express.static(UPLOADS_DIR));
 
-app.use(express.static(FRONTEND_ROOT));
+app.use(express.static(FRONTEND_ROOT, { index: false }));
 
 app.get('/', (req, res) => {
+  const hostStore = findStoreByHostname(req.hostname);
+  if (hostStore?.slug) {
+    return res.redirect(302, `/loja/${hostStore.slug}`);
+  }
   res.sendFile(path.join(FRONTEND_ROOT, 'index.html'));
 });
 
