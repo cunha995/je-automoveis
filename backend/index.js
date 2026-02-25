@@ -16,14 +16,14 @@ app.use(cors());
 app.use(express.json());
 
 const FRONTEND_ROOT = path.join(__dirname, 'public');
-const DATA_DIR = path.join(__dirname, 'data');
+const DATA_DIR = process.env.DATA_DIR || process.env.RENDER_DISK_PATH || path.join(__dirname, 'data');
 const VEHICLES_FILE = path.join(DATA_DIR, 'vehicles.json');
 const SELLERS_FILE = path.join(DATA_DIR, 'sellers.json');
 const BANNERS_FILE = path.join(DATA_DIR, 'banners.json');
 const SITE_SETTINGS_FILE = path.join(DATA_DIR, 'site-settings.json');
 const STORES_FILE = path.join(DATA_DIR, 'stores.json');
 const STORES_DIR = path.join(DATA_DIR, 'stores');
-const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(__dirname, 'uploads');
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(DATA_DIR, 'uploads');
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'je2026';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Je2026';
@@ -123,7 +123,7 @@ function normalizePublicBaseUrl(value) {
 }
 
 function findStoreByHostname(hostname) {
-  const safeHost = String(hostname || '').toLowerCase().trim();
+  const safeHost = String(hostname || '').toLowerCase().trim().replace(/^www\./, '');
   if (!safeHost) return null;
   const stores = readStores();
   return stores.find((item) => {
@@ -131,7 +131,8 @@ function findStoreByHostname(hostname) {
     if (!base) return false;
     try {
       const parsed = new URL(base);
-      return parsed.hostname.toLowerCase() === safeHost;
+      const storeHost = parsed.hostname.toLowerCase().replace(/^www\./, '');
+      return storeHost === safeHost;
     } catch {
       return false;
     }
