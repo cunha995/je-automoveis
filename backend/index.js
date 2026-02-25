@@ -23,7 +23,7 @@ const BANNERS_FILE = path.join(DATA_DIR, 'banners.json');
 const SITE_SETTINGS_FILE = path.join(DATA_DIR, 'site-settings.json');
 const STORES_FILE = path.join(DATA_DIR, 'stores.json');
 const STORES_DIR = path.join(DATA_DIR, 'stores');
-const UPLOADS_DIR = path.join(FRONTEND_ROOT, 'uploads');
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(__dirname, 'uploads');
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'je2026';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Je2026';
@@ -522,7 +522,7 @@ async function removeStoredMedia(media) {
   }
 
   if (storage === 'local' && String(media.url).startsWith('/uploads/')) {
-    const mediaPath = path.join(FRONTEND_ROOT, media.url);
+    const mediaPath = path.join(UPLOADS_DIR, path.basename(String(media.url)));
     if (fs.existsSync(mediaPath)) fs.unlinkSync(mediaPath);
   }
 }
