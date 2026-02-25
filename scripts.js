@@ -4,7 +4,7 @@
 // Example:
 // const BACKEND_URL = 'https://je-backend.onrender.com';
 // If left empty the frontend will POST to a relative `/contact` path.
-const BACKEND_URL = 'https://je-automoveis.onrender.com';
+const BACKEND_URL = window.location.origin;
 let STORE_WHATSAPP_NUMBER = '5500000000000';
 const PATH_PARTS = window.location.pathname.split('/').filter(Boolean);
 const STORE_SLUG = PATH_PARTS[0] === 'loja' ? PATH_PARTS[1] : '';
@@ -99,6 +99,8 @@ function applyStoreBrand(store) {
   document.querySelectorAll('.brand span').forEach((node) => {
     node.textContent = store.name;
   });
+  const footerText = document.querySelector('.site-footer p');
+  if (footerText) footerText.textContent = `© ${store.name} — Todos os direitos reservados`;
   const aboutTitle = document.getElementById('aboutTitle');
   if (aboutTitle && !aboutTitle.textContent.includes(store.name)) {
     aboutTitle.textContent = `Sobre a ${store.name}`;
@@ -117,6 +119,7 @@ const fallbackSiteSettings = {
   storePhone: '(00) 0 0000-0000',
   storeWhatsapp: '5500000000000',
   storeEmail: 'contato@jeautomoveis.com',
+  heroBackgroundImage: '',
 };
 
 function formatPrice(price) {
@@ -366,6 +369,7 @@ function renderSiteSettings(settings) {
   const storePhone = document.getElementById('storePhone');
   const storeWhatsapp = document.getElementById('storeWhatsapp');
   const storeEmail = document.getElementById('storeEmail');
+  const hero = document.querySelector('.hero');
 
   STORE_WHATSAPP_NUMBER = String(safe.storeWhatsapp || '').replace(/\D/g, '') || '5500000000000';
 
@@ -375,6 +379,13 @@ function renderSiteSettings(settings) {
   if (storePhone) storePhone.textContent = safe.storePhone;
   if (storeWhatsapp) storeWhatsapp.textContent = STORE_WHATSAPP_NUMBER;
   if (storeEmail) storeEmail.textContent = safe.storeEmail;
+  if (hero) {
+    if (safe.heroBackgroundImage) {
+      hero.style.setProperty('--hero-image', `url('${toAbsoluteImage(safe.heroBackgroundImage, 'Capa da loja')}')`);
+    } else {
+      hero.style.removeProperty('--hero-image');
+    }
+  }
 
   if (aboutHighlights) {
     const highlights = Array.isArray(safe.aboutHighlights) && safe.aboutHighlights.length

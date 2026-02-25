@@ -26,6 +26,7 @@ const cancelBannerEditBtn = document.getElementById('cancelBannerEditBtn');
 
 const settingsForm = document.getElementById('settingsForm');
 const settingsMessage = document.getElementById('settingsMessage');
+const uploadHeroImageBtn = document.getElementById('uploadHeroImageBtn');
 const passwordSection = document.getElementById('sec-senha');
 const passwordForm = document.getElementById('passwordForm');
 const passwordMessage = document.getElementById('passwordMessage');
@@ -546,6 +547,42 @@ settingsForm.addEventListener('submit', async (event) => {
   setMessage(settingsMessage, 'Informações da loja atualizadas com sucesso.');
   loadSiteSettings();
 });
+
+if (uploadHeroImageBtn && settingsForm) {
+  uploadHeroImageBtn.addEventListener('click', async () => {
+    const fileInput = settingsForm.elements.heroBackgroundImage;
+    const selectedFile = fileInput?.files?.[0];
+
+    if (!selectedFile) {
+      setMessage(settingsMessage, 'Selecione uma imagem para o fundo da capa.', true);
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('heroImage', selectedFile);
+
+    const res = await fetch(`${API_BASE}/api/admin/site-settings/hero-image`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: formData,
+    });
+
+    if (handleUnauthorized(res)) {
+      alert('Sessão expirada. Faça login novamente para salvar as alterações.');
+      return;
+    }
+
+    const data = await safeReadJson(res);
+    if (!res.ok) {
+      setMessage(settingsMessage, data.error || 'Falha ao enviar foto de fundo.', true);
+      return;
+    }
+
+    fileInput.value = '';
+    setMessage(settingsMessage, 'Foto de fundo enviada com sucesso.');
+    loadSiteSettings();
+  });
+}
 
 if (passwordForm) {
   passwordForm.addEventListener('submit', async (event) => {

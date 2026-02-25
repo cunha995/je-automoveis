@@ -276,6 +276,9 @@ function defaultSiteSettings() {
     storePhone: '(00) 0 0000-0000',
     storeWhatsapp: '5500000000000',
     storeEmail: 'contato@jeautomoveis.com',
+    heroBackgroundImage: '',
+    heroBackgroundStorage: 'none',
+    heroBackgroundPublicId: null,
   };
 }
 
@@ -983,6 +986,42 @@ app.put('/api/admin/site-settings', requireAdmin, (req, res) => {
     storePhone: storePhone !== undefined ? String(storePhone).trim() : undefined,
     storeWhatsapp: storeWhatsapp !== undefined ? String(storeWhatsapp).trim() : undefined,
     storeEmail: storeEmail !== undefined ? String(storeEmail).trim() : undefined,
+  });
+
+  return res.json({ ok: true, settings });
+});
+
+app.post('/api/admin/site-settings/hero-image', requireAdmin, upload.single('heroImage'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'Selecione uma imagem para o fundo da capa.' });
+  }
+
+  let savedImage = null;
+  try {
+    savedImage = await persistUploadedFile(req.file, 'image');
+  } catch (err) {
+    console.error('Erro ao salvar imagem de fundo:', err);
+    return res.status(500).json({ error: 'Falha ao salvar imagem de fundo.' });
+  }
+
+  const currentSettings = readSiteSettingsScoped(req);
+  if (currentSettings.heroBackgroundImage) {
+    try {
+      await removeStoredMedia({
+        url: currentSettings.heroBackgroundImage,
+        mediaType: 'image',
+        storage: currentSettings.heroBackgroundStorage || 'local',
+        publicId: currentSettings.heroBackgroundPublicId || null,
+      });
+    } catch (err) {
+      console.warn('Falha ao remover imagem anterior de fundo:', err.message);
+    }
+  }
+
+  const settings = writeSiteSettingsScoped(req, {
+    heroBackgroundImage: savedImage.url,
+    heroBackgroundStorage: savedImage.storage || 'local',
+    heroBackgroundPublicId: savedImage.publicId || null,
   });
 
   return res.json({ ok: true, settings });
