@@ -194,9 +194,7 @@ function normalizeWhatsappNumber(value) {
 function buildVehicleSellerInterestHtml(vehicle, listIndex) {
   const sellers = getInterestSellers().filter((seller) => {
     const phone = normalizeWhatsappNumber(seller?.whatsapp);
-    if (!phone) return false;
-    const status = String(seller?.status || '').toLowerCase();
-    return !/(offline|indispon|ausente)/.test(status);
+    return !!phone;
   });
 
   const fallbackMessage = encodeURIComponent(`Olá! Tenho interesse no veículo ${vehicle.model} ${vehicle.year}.`);
@@ -206,8 +204,6 @@ function buildVehicleSellerInterestHtml(vehicle, listIndex) {
     return `<a href="${fallbackLink}" target="_blank" rel="noopener noreferrer" class="btn-card primary">Tenho interesse</a>`;
   }
 
-  const visibleSellers = sellers.slice(0, 3);
-  const hiddenSellers = sellers.slice(3);
   const safeVehicleId = String(vehicle.id || '').replace(/[^a-zA-Z0-9_-]/g, '');
   const hiddenListId = `interest-sellers-${safeVehicleId || `idx-${listIndex}`}`;
 
@@ -219,10 +215,7 @@ function buildVehicleSellerInterestHtml(vehicle, listIndex) {
     return `<a class="vehicle-interest-option" target="_blank" rel="noopener noreferrer" href="${link}">${sellerName}</a>`;
   };
 
-  const allLinks = [...visibleSellers, ...hiddenSellers].map(renderSellerLink).join('');
-  const toggleHtml = hiddenSellers.length
-    ? `<button type="button" class="vehicle-interest-more" data-toggle-interest="${hiddenListId}" data-expand-label="Ver todos os vendedores" data-collapse-label="Ver menos vendedores">Ver todos os vendedores</button>`
-    : '';
+  const allLinks = sellers.map(renderSellerLink).join('');
 
   return `
     <div class="vehicle-interest-dropdown">
@@ -230,7 +223,6 @@ function buildVehicleSellerInterestHtml(vehicle, listIndex) {
       <div id="${hiddenListId}" class="vehicle-interest-options vehicle-interest-list-hidden">
         ${allLinks}
       </div>
-      ${toggleHtml}
     </div>
   `;
 }
