@@ -68,12 +68,15 @@ async function loadStores() {
 
   storeList.innerHTML = stores.map((store) => {
     const publicUrl = `${API_BASE}/loja/${store.slug}`;
+    const adminUrl = `${API_BASE}/admin/${store.slug}`;
     return `
       <article class="admin-item">
         <div class="master-meta">
           <h3>${store.name}</h3>
           <p>Slug: ${store.slug}</p>
+          <p>Admin: ${store.adminUsername || '-'}</p>
           <a class="master-link" target="_blank" rel="noopener noreferrer" href="${publicUrl}">${publicUrl}</a>
+          <a class="master-link" target="_blank" rel="noopener noreferrer" href="${adminUrl}">${adminUrl}</a>
         </div>
       </article>
     `;
@@ -112,6 +115,8 @@ storeForm.addEventListener('submit', async (event) => {
   const payload = {
     name: storeForm.elements.name.value,
     slug: safeSlug(storeForm.elements.slug.value || storeForm.elements.name.value),
+    adminUsername: storeForm.elements.adminUsername.value,
+    adminPassword: storeForm.elements.adminPassword.value,
     storePhone: storeForm.elements.storePhone.value,
     storeWhatsapp: storeForm.elements.storeWhatsapp.value,
     storeEmail: storeForm.elements.storeEmail.value,
@@ -142,7 +147,8 @@ storeForm.addEventListener('submit', async (event) => {
   }
 
   const fullUrl = `${API_BASE}${data.publicUrl}`;
-  setMessage(storeMessage, `Loja criada com sucesso! Link: ${fullUrl}`);
+  const fullAdminUrl = `${API_BASE}${data.adminUrl}`;
+  setMessage(storeMessage, `Loja criada! Site: ${fullUrl} | Admin: ${fullAdminUrl}`);
   storeForm.reset();
   loadStores();
 });

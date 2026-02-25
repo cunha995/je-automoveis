@@ -1,5 +1,7 @@
 const API_BASE = window.location.origin;
 const TOKEN_KEY = 'je_admin_token';
+const ADMIN_PATH = window.location.pathname.split('/').filter(Boolean);
+const STORE_SLUG = ADMIN_PATH[0] === 'admin' && ADMIN_PATH[1] ? ADMIN_PATH[1] : '';
 
 const loginSection = document.getElementById('loginSection');
 const panelSection = document.getElementById('panelSection');
@@ -48,6 +50,19 @@ function authHeaders() {
 function showPanel(isLoggedIn) {
   loginSection.classList.toggle('hidden', isLoggedIn);
   panelSection.classList.toggle('hidden', !isLoggedIn);
+}
+
+function applyStoreContext() {
+  if (!STORE_SLUG) return;
+
+  const title = document.querySelector('title');
+  if (title) title.textContent = `Painel Admin — ${STORE_SLUG}`;
+
+  const brandText = document.querySelector('.brand span');
+  if (brandText) brandText.textContent = `Painel ${STORE_SLUG}`;
+
+  const loginTitle = document.querySelector('#loginSection h1');
+  if (loginTitle) loginTitle.textContent = `Entrar no painel da loja: ${STORE_SLUG}`;
 }
 
 function setMessage(target, message, isError = false) {
@@ -357,6 +372,7 @@ loginForm.addEventListener('submit', async (event) => {
   const payload = {
     username: loginForm.elements.username.value,
     password: loginForm.elements.password.value,
+    storeSlug: STORE_SLUG || undefined,
   };
 
   const res = await fetch(`${API_BASE}/api/admin/login`, {
@@ -551,6 +567,7 @@ cancelBannerEditBtn.addEventListener('click', () => {
 });
 
 (function init() {
+  applyStoreContext();
   const hasToken = !!getToken();
   showPanel(hasToken);
   if (hasToken) {

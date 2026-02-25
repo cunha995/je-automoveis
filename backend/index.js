@@ -72,14 +72,23 @@ function seedDefaultMasterStore() {
     id: 'store-je-automoveis',
     name: 'JE Automóveis',
     slug: 'je-automoveis',
+    adminUsername: 'admin-je',
+    adminPassword: 'JeLoja2026',
     createdAt: '2026-01-01T00:00:00.000Z',
   };
 
   const stores = readStores();
-  if (!stores.some((item) => item.slug === defaultStore.slug)) {
+  const existingIndex = stores.findIndex((item) => item.slug === defaultStore.slug);
+  if (existingIndex < 0) {
     stores.unshift(defaultStore);
-    writeStores(stores);
+  } else {
+    stores[existingIndex] = {
+      ...stores[existingIndex],
+      adminUsername: stores[existingIndex].adminUsername || defaultStore.adminUsername,
+      adminPassword: stores[existingIndex].adminPassword || defaultStore.adminPassword,
+    };
   }
+  writeStores(stores);
 
   const files = storeFiles(defaultStore.slug);
   if (!fs.existsSync(files.storeDir)) fs.mkdirSync(files.storeDir, { recursive: true });
@@ -136,14 +145,29 @@ function readStoreVehicles(slug) {
   return readCollection(files.vehiclesFile);
 }
 
+function writeStoreVehicles(slug, vehicles) {
+  const files = ensureStoreData(slug);
+  writeCollection(files.vehiclesFile, vehicles);
+}
+
 function readStoreSellers(slug) {
   const files = ensureStoreData(slug);
   return readCollection(files.sellersFile);
 }
 
+function writeStoreSellers(slug, sellers) {
+  const files = ensureStoreData(slug);
+  writeCollection(files.sellersFile, sellers);
+}
+
 function readStoreBanners(slug) {
   const files = ensureStoreData(slug);
   return readCollection(files.bannersFile);
+}
+
+function writeStoreBanners(slug, banners) {
+  const files = ensureStoreData(slug);
+  writeCollection(files.bannersFile, banners);
 }
 
 function readStoreSettings(slug) {
@@ -162,6 +186,67 @@ function readStoreSettings(slug) {
   } catch {
     return defaults;
   }
+}
+
+function writeStoreSettings(slug, settings) {
+  const files = ensureStoreData(slug);
+  const current = readStoreSettings(slug);
+  const next = {
+    ...current,
+    ...settings,
+    aboutHighlights: Array.isArray(settings.aboutHighlights)
+      ? settings.aboutHighlights.filter((item) => String(item || '').trim())
+      : current.aboutHighlights,
+  };
+  fs.writeFileSync(files.settingsFile, JSON.stringify(next, null, 2), 'utf-8');
+  return next;
+}
+
+function scopeSlugFromSession(req) {
+  return req?.admin?.storeSlug ? String(req.admin.storeSlug) : '';
+}
+
+function readVehiclesScoped(req) {
+  const slug = scopeSlugFromSession(req);
+  return slug ? readStoreVehicles(slug) : readVehicles();
+}
+
+function writeVehiclesScoped(req, vehicles) {
+  const slug = scopeSlugFromSession(req);
+  if (slug) return writeStoreVehicles(slug, vehicles);
+  return writeVehicles(vehicles);
+}
+
+function readSellersScoped(req) {
+  const slug = scopeSlugFromSession(req);
+  return slug ? readStoreSellers(slug) : readSellers();
+}
+
+function writeSellersScoped(req, sellers) {
+  const slug = scopeSlugFromSession(req);
+  if (slug) return writeStoreSellers(slug, sellers);
+  return writeSellers(sellers);
+}
+
+function readBannersScoped(req) {
+  const slug = scopeSlugFromSession(req);
+  return slug ? readStoreBanners(slug) : readBanners();
+}
+
+function writeBannersScoped(req, banners) {
+  const slug = scopeSlugFromSession(req);
+  if (slug) return writeStoreBanners(slug, banners);
+  return writeBanners(banners);
+}
+
+function readSiteSettingsScoped(req) {
+  const slug = scopeSlugFromSession(req);
+  return slug ? readStoreSettings(slug) : readSiteSettings();
+}
+
+function writeSiteSettingsScoped(req, settings) {
+  const slug = scopeSlugFromSession(req);
+  return slug ? writeStoreSettings(slug, settings) : writeSiteSettings(settings);
 }
 
 function defaultSiteSettings() {
@@ -664,12 +749,18 @@ app.get('/api/master/stores', requireMaster, (_req, res) => {
 });
 
 app.post('/api/master/stores', requireMaster, (req, res) => {
-  const { name, slug, storePhone, storeWhatsapp, storeEmail, storeAddress, aboutText } = req.body || {};
+  const { name, slug, storePhone, storeWhatsapp, storeEmail, storeAddress, aboutText, adminUsername, adminPassword } = req.body || {};
   const safeName = String(name || '').trim();
   const safeSlug = slugifyStore(slug || safeName);
 
   if (!safeName) return res.status(400).json({ error: 'Nome da loja é obrigatório' });
   if (!safeSlug) return res.status(400).json({ error: 'Slug inválido para a loja' });
+
+  const safeAdminUser = String(adminUsername || `admin-${safeSlug}`).trim();
+  const safeAdminPass = String(adminPassword || 'Loja2026').trim();
+  if (!safeAdminUser || !safeAdminPass) {
+    return res.status(400).json({ error: 'Usuário e senha admin da loja são obrigatórios' });
+  }
 
   const stores = readStores();
   if (stores.some((item) => item.slug === safeSlug)) {
@@ -680,6 +771,8 @@ app.post('/api/master/stores', requireMaster, (req, res) => {
     id: crypto.randomUUID(),
     name: safeName,
     slug: safeSlug,
+    adminUsername: safeAdminUser,
+    adminPassword: safeAdminPass,
     createdAt: new Date().toISOString(),
   };
 
@@ -699,23 +792,39 @@ app.post('/api/master/stores', requireMaster, (req, res) => {
     ok: true,
     store,
     publicUrl: `/loja/${safeSlug}`,
+    adminUrl: `/admin/${safeSlug}`,
   });
 });
 
 app.post('/api/admin/login', (req, res) => {
-  const { username, password } = req.body || {};
-  if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
+  const { username, password, storeSlug } = req.body || {};
+
+  let sessionStoreSlug = '';
+  if (storeSlug) {
+    const safeSlug = slugifyStore(storeSlug);
+    const store = readStores().find((item) => item.slug === safeSlug);
+    if (!store) return res.status(401).json({ error: 'Loja não encontrada para este login' });
+
+    const expectedUser = store.adminUsername || `admin-${safeSlug}`;
+    const expectedPass = store.adminPassword || 'Loja2026';
+    if (username !== expectedUser || password !== expectedPass) {
+      return res.status(401).json({ error: 'Credenciais da loja inválidas' });
+    }
+    sessionStoreSlug = safeSlug;
+  } else if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: 'Credenciais inválidas' });
   }
 
   const token = createToken();
   const expiresAt = Date.now() + TOKEN_TTL_MS;
-  adminSessions.set(token, { username, expiresAt });
+  adminSessions.set(token, { username, expiresAt, storeSlug: sessionStoreSlug });
 
   return res.json({
     ok: true,
     token,
     expiresAt,
+    storeSlug: sessionStoreSlug,
+    isStoreAdmin: !!sessionStoreSlug,
     usingDefaultPassword: ADMIN_PASSWORD === 'Je2026',
   });
 });
@@ -727,7 +836,7 @@ app.post('/api/admin/logout', requireAdmin, (req, res) => {
 });
 
 app.get('/api/admin/vehicles', requireAdmin, (_req, res) => {
-  const vehicles = readVehicles().map((vehicle) => {
+  const vehicles = readVehiclesScoped(_req).map((vehicle) => {
     const normalized = normalizeVehicleMedia(vehicle);
     return {
       ...normalized,
@@ -738,17 +847,17 @@ app.get('/api/admin/vehicles', requireAdmin, (_req, res) => {
 });
 
 app.get('/api/admin/sellers', requireAdmin, (_req, res) => {
-  const sellers = readSellers();
+  const sellers = readSellersScoped(_req);
   return res.json({ ok: true, sellers });
 });
 
 app.get('/api/admin/banners', requireAdmin, (_req, res) => {
-  const banners = readBanners().sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+  const banners = readBannersScoped(_req).sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
   return res.json({ ok: true, banners });
 });
 
 app.get('/api/admin/site-settings', requireAdmin, (_req, res) => {
-  const settings = readSiteSettings();
+  const settings = readSiteSettingsScoped(_req);
   return res.json({ ok: true, settings });
 });
 
@@ -770,7 +879,7 @@ app.put('/api/admin/site-settings', requireAdmin, (req, res) => {
       .map((item) => item.trim())
       .filter(Boolean);
 
-  const settings = writeSiteSettings({
+  const settings = writeSiteSettingsScoped(req, {
     aboutTitle: aboutTitle !== undefined ? String(aboutTitle).trim() : undefined,
     aboutText: aboutText !== undefined ? String(aboutText).trim() : undefined,
     aboutHighlights: normalizedHighlights,
@@ -832,9 +941,9 @@ app.post('/api/admin/vehicles', requireAdmin, vehicleUpload.fields([
     createdAt: new Date().toISOString(),
   };
 
-  const vehicles = readVehicles();
+  const vehicles = readVehiclesScoped(req);
   vehicles.unshift(vehicle);
-  writeVehicles(vehicles);
+  writeVehiclesScoped(req, vehicles);
 
   return res.status(201).json({ ok: true, vehicle });
 });
@@ -844,7 +953,7 @@ app.put('/api/admin/vehicles/:id', requireAdmin, vehicleUpload.fields([
   { name: 'videos', maxCount: 4 },
   { name: 'photo', maxCount: 1 },
 ]), async (req, res) => {
-  const vehicles = readVehicles();
+  const vehicles = readVehiclesScoped(req);
   const index = vehicles.findIndex((item) => item.id === req.params.id);
   if (index < 0) return res.status(404).json({ error: 'Veículo não encontrado' });
 
@@ -898,17 +1007,17 @@ app.put('/api/admin/vehicles/:id', requireAdmin, vehicleUpload.fields([
   }
 
   vehicles[index] = updated;
-  writeVehicles(vehicles);
+  writeVehiclesScoped(req, vehicles);
   return res.json({ ok: true, vehicle: updated });
 });
 
 app.delete('/api/admin/vehicles/:id', requireAdmin, async (req, res) => {
-  const vehicles = readVehicles();
+  const vehicles = readVehiclesScoped(req);
   const index = vehicles.findIndex((item) => item.id === req.params.id);
   if (index < 0) return res.status(404).json({ error: 'Veículo não encontrado' });
 
   const [removed] = vehicles.splice(index, 1);
-  writeVehicles(vehicles);
+  writeVehiclesScoped(req, vehicles);
 
   try {
     await removeVehicleStoredMedia(removed);
@@ -945,14 +1054,14 @@ app.post('/api/admin/sellers', requireAdmin, upload.single('photo'), async (req,
     createdAt: new Date().toISOString(),
   };
 
-  const sellers = readSellers();
+  const sellers = readSellersScoped(req);
   sellers.unshift(seller);
-  writeSellers(sellers);
+  writeSellersScoped(req, sellers);
   return res.status(201).json({ ok: true, seller });
 });
 
 app.put('/api/admin/sellers/:id', requireAdmin, upload.single('photo'), async (req, res) => {
-  const sellers = readSellers();
+  const sellers = readSellersScoped(req);
   const index = sellers.findIndex((item) => item.id === req.params.id);
   if (index < 0) return res.status(404).json({ error: 'Vendedor não encontrado' });
 
@@ -983,17 +1092,17 @@ app.put('/api/admin/sellers/:id', requireAdmin, upload.single('photo'), async (r
   }
 
   sellers[index] = updated;
-  writeSellers(sellers);
+  writeSellersScoped(req, sellers);
   return res.json({ ok: true, seller: updated });
 });
 
 app.delete('/api/admin/sellers/:id', requireAdmin, async (req, res) => {
-  const sellers = readSellers();
+  const sellers = readSellersScoped(req);
   const index = sellers.findIndex((item) => item.id === req.params.id);
   if (index < 0) return res.status(404).json({ error: 'Vendedor não encontrado' });
 
   const [removed] = sellers.splice(index, 1);
-  writeSellers(sellers);
+  writeSellersScoped(req, sellers);
 
   try {
     await removeStoredImage(removed);
@@ -1030,14 +1139,14 @@ app.post('/api/admin/banners', requireAdmin, upload.single('image'), async (req,
     createdAt: new Date().toISOString(),
   };
 
-  const banners = readBanners();
+  const banners = readBannersScoped(req);
   banners.unshift(banner);
-  writeBanners(banners);
+  writeBannersScoped(req, banners);
   return res.status(201).json({ ok: true, banner });
 });
 
 app.put('/api/admin/banners/:id', requireAdmin, upload.single('image'), async (req, res) => {
-  const banners = readBanners();
+  const banners = readBannersScoped(req);
   const index = banners.findIndex((item) => item.id === req.params.id);
   if (index < 0) return res.status(404).json({ error: 'Banner não encontrado' });
 
@@ -1069,17 +1178,17 @@ app.put('/api/admin/banners/:id', requireAdmin, upload.single('image'), async (r
   }
 
   banners[index] = updated;
-  writeBanners(banners);
+  writeBannersScoped(req, banners);
   return res.json({ ok: true, banner: updated });
 });
 
 app.delete('/api/admin/banners/:id', requireAdmin, async (req, res) => {
-  const banners = readBanners();
+  const banners = readBannersScoped(req);
   const index = banners.findIndex((item) => item.id === req.params.id);
   if (index < 0) return res.status(404).json({ error: 'Banner não encontrado' });
 
   const [removed] = banners.splice(index, 1);
-  writeBanners(banners);
+  writeBannersScoped(req, banners);
 
   try {
     await removeStoredImage(removed);
@@ -1125,6 +1234,13 @@ app.get('/health', (req, res) => res.json({ ok: true, service: 'JE Automoveis Ba
 
 app.get('/admin', (_req, res) => {
   res.sendFile(path.join(FRONTEND_ROOT, 'admin.html'));
+});
+
+app.get('/admin/:slug', (req, res) => {
+  const slug = slugifyStore(req.params.slug);
+  const exists = readStores().some((item) => item.slug === slug);
+  if (!exists) return res.status(404).sendFile(path.join(FRONTEND_ROOT, 'index.html'));
+  return res.sendFile(path.join(FRONTEND_ROOT, 'admin.html'));
 });
 
 app.get('/master', (_req, res) => {

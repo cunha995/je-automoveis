@@ -402,10 +402,10 @@ async function loadVehicles() {
       renderVehicles(vehicles);
       return;
     }
-    renderVehicles(fallbackVehicles);
+    renderVehicles(STORE_SLUG ? [] : fallbackVehicles);
   } catch (err) {
     console.error('Erro ao carregar estoque:', err);
-    renderVehicles(fallbackVehicles);
+    renderVehicles(STORE_SLUG ? [] : fallbackVehicles);
   }
 }
 
@@ -417,10 +417,10 @@ async function loadSellers() {
     const data = await res.json();
     applyStoreBrand(data.store);
     const sellers = Array.isArray(data.sellers) ? data.sellers : [];
-    renderSellers(sellers.length ? sellers : fallbackSellers);
+    renderSellers(sellers.length ? sellers : (STORE_SLUG ? [] : fallbackSellers));
   } catch (err) {
     console.error('Erro ao carregar vendedores:', err);
-    renderSellers(fallbackSellers);
+    renderSellers(STORE_SLUG ? [] : fallbackSellers);
   }
 }
 
@@ -432,10 +432,10 @@ async function loadBanners() {
     const data = await res.json();
     applyStoreBrand(data.store);
     const banners = Array.isArray(data.banners) ? data.banners : [];
-    renderBanners(banners.length ? banners : fallbackBanners);
+    renderBanners(banners.length ? banners : (STORE_SLUG ? [] : fallbackBanners));
   } catch (err) {
     console.error('Erro ao carregar banners:', err);
-    renderBanners(fallbackBanners);
+    renderBanners(STORE_SLUG ? [] : fallbackBanners);
   }
 }
 
@@ -449,7 +449,12 @@ async function loadSiteSettings() {
     renderSiteSettings(data.settings || fallbackSiteSettings);
   } catch (err) {
     console.error('Erro ao carregar configurações da loja:', err);
-    renderSiteSettings(fallbackSiteSettings);
+    renderSiteSettings(STORE_SLUG ? {
+      ...fallbackSiteSettings,
+      aboutTitle: 'Sobre a loja',
+      aboutText: 'Cadastre os dados desta loja no painel admin da própria loja.',
+      aboutHighlights: ['Loja em configuração inicial'],
+    } : fallbackSiteSettings);
   }
 }
 
