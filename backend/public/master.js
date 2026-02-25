@@ -106,11 +106,8 @@ async function loadStores() {
   }
 
   storeList.innerHTML = stores.map((store) => {
-    const publicUrl = buildStorePublicUrl(store);
-    const adminUrl = buildStoreAdminUrl(store);
     const systemPublicUrl = buildStoreSystemPublicUrl(store);
     const systemAdminUrl = buildStoreSystemAdminUrl(store);
-    const hasCustomDomain = !!normalizeBaseUrl(store.publicBaseUrl);
     return `
       <article class="admin-item">
         <div class="master-meta">
@@ -122,8 +119,6 @@ async function loadStores() {
           <p>Domínio cliente: ${store.publicBaseUrl || 'padrão do sistema'}</p>
           <a class="master-link" target="_blank" rel="noopener noreferrer" href="${systemPublicUrl}">URL sistema (site): ${systemPublicUrl}</a>
           <a class="master-link" target="_blank" rel="noopener noreferrer" href="${systemAdminUrl}">URL sistema (admin): ${systemAdminUrl}</a>
-          ${hasCustomDomain ? `<a class="master-link" target="_blank" rel="noopener noreferrer" href="${publicUrl}">URL cliente (site): ${publicUrl}</a>` : ''}
-          ${hasCustomDomain ? `<a class="master-link" target="_blank" rel="noopener noreferrer" href="${adminUrl}">URL cliente (admin): ${adminUrl}</a>` : ''}
         </div>
         <div class="admin-item-actions">
           <button class="btn-edit" type="button" data-edit-billing="${store.slug}">Editar mensalidade</button>
@@ -290,16 +285,10 @@ storeForm.addEventListener('submit', async (event) => {
   const createdStore = data.store || payload;
   const systemPublicUrl = buildStoreSystemPublicUrl(createdStore);
   const systemAdminUrl = buildStoreSystemAdminUrl(createdStore);
-  const hasCustomDomain = !!normalizeBaseUrl(createdStore.publicBaseUrl);
-  const clientPublicUrl = buildStorePublicUrl(createdStore);
-  const clientAdminUrl = buildStoreAdminUrl(createdStore);
-  const domainHint = hasCustomDomain
-    ? ` | Cliente (após DNS): Site ${clientPublicUrl} | Admin ${clientAdminUrl}`
-    : '';
 
   setMessage(
     storeMessage,
-    `Loja criada! Sistema: Site ${systemPublicUrl} | Admin ${systemAdminUrl}${domainHint} | Usuário: ${payload.adminUsername} | Senha: ${payload.adminPassword}`
+    `Loja criada! Sistema: Site ${systemPublicUrl} | Admin ${systemAdminUrl} | Usuário: ${payload.adminUsername} | Senha: ${payload.adminPassword}`
   );
   storeForm.reset();
   loadStores();
