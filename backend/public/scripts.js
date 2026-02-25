@@ -4,7 +4,8 @@
 // Example:
 // const BACKEND_URL = 'https://je-backend.onrender.com';
 // If left empty the frontend will POST to a relative `/contact` path.
-const BACKEND_URL = window.location.origin;
+const BACKEND_URL = 'https://je-automoveis.onrender.com';
+const BACKEND_BASE_URL = String(BACKEND_URL || '').trim().replace(/\/+$/, '');
 let STORE_WHATSAPP_NUMBER = '5500000000000';
 let STORE_BADGE_COLOR = '#d32f2f';
 let CURRENT_STORE_NAME = 'Loja';
@@ -93,9 +94,11 @@ let vehicleCarouselTimers = [];
 
 function buildApiUrl(resource) {
   if (STORE_SLUG) {
-    return `${BACKEND_URL}/api/public/${STORE_SLUG}/${resource}`;
+    return BACKEND_BASE_URL
+      ? `${BACKEND_BASE_URL}/api/public/${STORE_SLUG}/${resource}`
+      : `/api/public/${STORE_SLUG}/${resource}`;
   }
-  return `${BACKEND_URL}/api/${resource}`;
+  return BACKEND_BASE_URL ? `${BACKEND_BASE_URL}/api/${resource}` : `/api/${resource}`;
 }
 
 function applyStoreBrand(store) {
@@ -161,8 +164,11 @@ function createFallbackImage(title) {
 function toAbsoluteImage(pathValue, fallbackTitle = 'JE Automóveis') {
   if (!pathValue) return createFallbackImage(fallbackTitle);
   if (pathValue.startsWith('http://') || pathValue.startsWith('https://') || pathValue.startsWith('data:')) return pathValue;
-  if (pathValue.startsWith('/')) return `${BACKEND_URL}${pathValue}`;
-  return `${BACKEND_URL}/${String(pathValue).replace(/^\/+/, '')}`;
+  if (pathValue.startsWith('/')) {
+    return BACKEND_BASE_URL ? `${BACKEND_BASE_URL}${pathValue}` : pathValue;
+  }
+  const normalizedPath = `/${String(pathValue).replace(/^\/+/, '')}`;
+  return BACKEND_BASE_URL ? `${BACKEND_BASE_URL}${normalizedPath}` : normalizedPath;
 }
 
 function normalizeVehicleMedia(vehicle) {
@@ -626,7 +632,7 @@ document.addEventListener('DOMContentLoaded', function(){
     };
 
     try {
-      const url = (BACKEND_URL || '') + '/contact';
+      const url = BACKEND_BASE_URL ? `${BACKEND_BASE_URL}/contact` : '/contact';
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
