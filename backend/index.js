@@ -65,6 +65,30 @@ function ensureStorage() {
   }
 }
 
+function seedDefaultMasterStore() {
+  ensureStorage();
+
+  const defaultStore = {
+    id: 'store-je-automoveis',
+    name: 'JE Automóveis',
+    slug: 'je-automoveis',
+    createdAt: '2026-01-01T00:00:00.000Z',
+  };
+
+  const stores = readStores();
+  if (!stores.some((item) => item.slug === defaultStore.slug)) {
+    stores.unshift(defaultStore);
+    writeStores(stores);
+  }
+
+  const files = storeFiles(defaultStore.slug);
+  if (!fs.existsSync(files.storeDir)) fs.mkdirSync(files.storeDir, { recursive: true });
+  if (!fs.existsSync(files.vehiclesFile)) fs.copyFileSync(VEHICLES_FILE, files.vehiclesFile);
+  if (!fs.existsSync(files.sellersFile)) fs.copyFileSync(SELLERS_FILE, files.sellersFile);
+  if (!fs.existsSync(files.bannersFile)) fs.copyFileSync(BANNERS_FILE, files.bannersFile);
+  if (!fs.existsSync(files.settingsFile)) fs.copyFileSync(SITE_SETTINGS_FILE, files.settingsFile);
+}
+
 function slugifyStore(value) {
   return String(value || '')
     .normalize('NFD')
@@ -1136,5 +1160,6 @@ app.get('*', (req, res) => {
 });
 
 ensureStorage();
+seedDefaultMasterStore();
 
 app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
