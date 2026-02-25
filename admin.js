@@ -124,6 +124,14 @@ function handleUnauthorized(res) {
   return true;
 }
 
+async function safeReadJson(res) {
+  try {
+    return await res.json();
+  } catch (_err) {
+    return {};
+  }
+}
+
 async function loadVehicles() {
   const res = await fetch(`${API_BASE}/api/admin/vehicles?t=${Date.now()}`, {
     headers: authHeaders(),
@@ -363,27 +371,48 @@ loginForm.addEventListener('submit', async (event) => {
 
 vehicleForm.addEventListener('submit', async (event) => {
   event.preventDefault();
-  const id = vehicleForm.elements.id.value;
-  const endpoint = id ? `${API_BASE}/api/admin/vehicles/${id}` : `${API_BASE}/api/admin/vehicles`;
-  const method = id ? 'PUT' : 'POST';
-  const formData = new FormData(vehicleForm);
-  const res = await fetch(endpoint, {
-    method,
-    headers: authHeaders(),
-    body: formData,
-  });
-  if (handleUnauthorized(res)) {
-    alert('Sessão expirada. Faça login novamente para salvar as alterações.');
-    return;
+  const submitBtn = vehicleForm.querySelector('button[type="submit"]');
+  const originalText = submitBtn ? submitBtn.textContent : '';
+
+  try {
+    const id = vehicleForm.elements.id.value;
+    const endpoint = id ? `${API_BASE}/api/admin/vehicles/${id}` : `${API_BASE}/api/admin/vehicles`;
+    const method = id ? 'PUT' : 'POST';
+    const formData = new FormData(vehicleForm);
+
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Salvando...';
+    }
+
+    const res = await fetch(endpoint, {
+      method,
+      headers: authHeaders(),
+      body: formData,
+    });
+
+    if (handleUnauthorized(res)) {
+      alert('Sessão expirada. Faça login novamente para salvar as alterações.');
+      return;
+    }
+
+    const data = await safeReadJson(res);
+    if (!res.ok) {
+      setMessage(vehicleMessage, data.error || 'Falha ao salvar veículo. Verifique os campos e tente novamente.', true);
+      return;
+    }
+
+    setMessage(vehicleMessage, id ? 'Veículo atualizado com sucesso.' : 'Veículo cadastrado com sucesso.');
+    clearVehicleForm();
+    loadVehicles();
+  } catch (_err) {
+    setMessage(vehicleMessage, 'Não foi possível salvar agora. Verifique sua conexão e tente novamente.', true);
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText || 'Salvar veículo';
+    }
   }
-  const data = await res.json();
-  if (!res.ok) {
-    setMessage(vehicleMessage, data.error || 'Falha ao salvar veículo.', true);
-    return;
-  }
-  setMessage(vehicleMessage, id ? 'Veículo atualizado com sucesso.' : 'Veículo cadastrado com sucesso.');
-  clearVehicleForm();
-  loadVehicles();
 });
 
 sellerForm.addEventListener('submit', async (event) => {
