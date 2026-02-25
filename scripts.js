@@ -220,7 +220,7 @@ function buildVehicleSellerInterestHtml(vehicle, listIndex) {
   return `
     <div class="vehicle-interest-dropdown">
       <button type="button" class="btn-card primary vehicle-interest-trigger" data-toggle-interest="${hiddenListId}" data-expand-label="Tenho interesse ▲" data-collapse-label="Tenho interesse ▼">Tenho interesse ▼</button>
-      <div id="${hiddenListId}" class="vehicle-interest-options vehicle-interest-list-hidden">
+      <div id="${hiddenListId}" class="vehicle-interest-options vehicle-interest-list-hidden" style="display:none;" data-open="false">
         ${allLinks}
       </div>
     </div>
@@ -236,7 +236,9 @@ function bindVehicleInterestToggle() {
       const target = document.getElementById(targetId);
       if (!target) return;
 
-      const isHidden = target.classList.contains('vehicle-interest-list-hidden');
+      const isHidden = target.dataset.open !== 'true';
+      target.dataset.open = isHidden ? 'true' : 'false';
+      target.style.display = isHidden ? 'grid' : 'none';
       target.classList.toggle('vehicle-interest-list-hidden', !isHidden);
       btn.textContent = isHidden
         ? (btn.getAttribute('data-collapse-label') || 'Ver menos vendedores')
