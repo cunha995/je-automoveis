@@ -67,6 +67,14 @@ function buildStoreAdminUrl(store) {
   return `${base}/admin/${store.slug}`;
 }
 
+function buildStoreSystemPublicUrl(store) {
+  return `${API_BASE}/loja/${store.slug}`;
+}
+
+function buildStoreSystemAdminUrl(store) {
+  return `${API_BASE}/admin/${store.slug}`;
+}
+
 function safeSlug(value) {
   return String(value || '')
     .normalize('NFD')
@@ -100,6 +108,9 @@ async function loadStores() {
   storeList.innerHTML = stores.map((store) => {
     const publicUrl = buildStorePublicUrl(store);
     const adminUrl = buildStoreAdminUrl(store);
+    const systemPublicUrl = buildStoreSystemPublicUrl(store);
+    const systemAdminUrl = buildStoreSystemAdminUrl(store);
+    const hasCustomDomain = !!normalizeBaseUrl(store.publicBaseUrl);
     return `
       <article class="admin-item">
         <div class="master-meta">
@@ -109,8 +120,10 @@ async function loadStores() {
           <p>Mensalidade: <strong>${formatCurrency(store.monthlyFee)}</strong></p>
           <p>Cobrança: ${store.billingNotes || 'Sem observação'}</p>
           <p>Domínio cliente: ${store.publicBaseUrl || 'padrão do sistema'}</p>
-          <a class="master-link" target="_blank" rel="noopener noreferrer" href="${publicUrl}">${publicUrl}</a>
-          <a class="master-link" target="_blank" rel="noopener noreferrer" href="${adminUrl}">${adminUrl}</a>
+          <a class="master-link" target="_blank" rel="noopener noreferrer" href="${systemPublicUrl}">URL sistema (site): ${systemPublicUrl}</a>
+          <a class="master-link" target="_blank" rel="noopener noreferrer" href="${systemAdminUrl}">URL sistema (admin): ${systemAdminUrl}</a>
+          ${hasCustomDomain ? `<a class="master-link" target="_blank" rel="noopener noreferrer" href="${publicUrl}">URL cliente (site): ${publicUrl}</a>` : ''}
+          ${hasCustomDomain ? `<a class="master-link" target="_blank" rel="noopener noreferrer" href="${adminUrl}">URL cliente (admin): ${adminUrl}</a>` : ''}
         </div>
         <div class="admin-item-actions">
           <button class="btn-edit" type="button" data-edit-billing="${store.slug}">Editar mensalidade</button>
@@ -274,9 +287,20 @@ storeForm.addEventListener('submit', async (event) => {
     return;
   }
 
-  const fullUrl = buildStorePublicUrl(data.store || payload);
-  const fullAdminUrl = buildStoreAdminUrl(data.store || payload);
-  setMessage(storeMessage, `Loja criada! Site: ${fullUrl} | Admin: ${fullAdminUrl} | Usuário: ${payload.adminUsername} | Senha: ${payload.adminPassword}`);
+  const createdStore = data.store || payload;
+  const systemPublicUrl = buildStoreSystemPublicUrl(createdStore);
+  const systemAdminUrl = buildStoreSystemAdminUrl(createdStore);
+  const hasCustomDomain = !!normalizeBaseUrl(createdStore.publicBaseUrl);
+  const clientPublicUrl = buildStorePublicUrl(createdStore);
+  const clientAdminUrl = buildStoreAdminUrl(createdStore);
+  const domainHint = hasCustomDomain
+    ? ` | Cliente (após DNS): Site ${clientPublicUrl} | Admin ${clientAdminUrl}`
+    : '';
+
+  setMessage(
+    storeMessage,
+    `Loja criada! Sistema: Site ${systemPublicUrl} | Admin ${systemAdminUrl}${domainHint} | Usuário: ${payload.adminUsername} | Senha: ${payload.adminPassword}`
+  );
   storeForm.reset();
   loadStores();
 });
