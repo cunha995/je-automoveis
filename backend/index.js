@@ -16,6 +16,7 @@ app.use(cors());
 app.use(express.json());
 
 const FRONTEND_ROOT = path.join(__dirname, 'public');
+const INDEX_HTML_FILE = path.join(FRONTEND_ROOT, 'index.html');
 const DATA_DIR = process.env.DATA_DIR || process.env.RENDER_DISK_PATH || path.join(__dirname, 'data');
 const VEHICLES_FILE = path.join(DATA_DIR, 'vehicles.json');
 const SELLERS_FILE = path.join(DATA_DIR, 'sellers.json');
@@ -39,6 +40,7 @@ const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || '';
 const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY || '';
 const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET || '';
 const CLOUDINARY_FOLDER = process.env.CLOUDINARY_FOLDER || 'je-automoveis';
+let indexHtmlTemplateCache = '';
 
 const hasCloudinaryConfig =
   !!process.env.CLOUDINARY_URL ||
@@ -143,6 +145,48 @@ function findStoreByHostname(hostname) {
       return false;
     }
   }) || null;
+}
+
+function setNoCacheHeaders(res) {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function getIndexHtmlTemplate() {
+  if (indexHtmlTemplateCache) return indexHtmlTemplateCache;
+  try {
+    indexHtmlTemplateCache = fs.readFileSync(INDEX_HTML_FILE, 'utf-8');
+    return indexHtmlTemplateCache;
+  } catch {
+    return '';
+  }
+}
+
+function renderStoreIndexHtml(store) {
+  const template = getIndexHtmlTemplate();
+  if (!template) return '';
+
+  const safeName = escapeHtml(store?.name || 'JE Automóveis');
+  const replacements = [
+    ['JE Automóveis — Venda, Troca e Consignado', `${safeName} — Venda, Troca e Consignado`],
+    ['JE Automóveis — venda, troca e consignado de veículos com atendimento especializado.', `${safeName} — venda, troca e consignado de veículos com atendimento especializado.`],
+    ['alt="JE Automóveis logo"', `alt="${safeName} logo"`],
+    ['<span>JE Automóveis</span>', `<span>${safeName}</span>`],
+    ['Sobre a JE Automóveis', `Sobre a ${safeName}`],
+    ['© JE Automóveis — Todos os direitos reservados', `© ${safeName} — Todos os direitos reservados`],
+  ];
+
+  return replacements.reduce((html, [search, nextValue]) => html.split(search).join(nextValue), template);
 }
 
 function storeFiles(slug) {
@@ -1724,9 +1768,14 @@ app.get('/master', (_req, res) => {
 
 app.get('/loja/:slug', (req, res) => {
   const slug = slugifyStore(req.params.slug);
-  const exists = readStores().some((item) => item.slug === slug);
-  if (!exists) return res.status(404).sendFile(path.join(FRONTEND_ROOT, 'index.html'));
-  return res.sendFile(path.join(FRONTEND_ROOT, 'index.html'));
+  const store = readStores().find((item) => item.slug === slug);
+  if (!store) return res.status(404).sendFile(path.join(FRONTEND_ROOT, 'index.html'));
+
+  const html = renderStoreIndexHtml(store);
+  if (!html) return res.sendFile(path.join(FRONTEND_ROOT, 'index.html'));
+
+  setNoCacheHeaders(res);
+  return res.send(html);
 });
 
 app.use('/uploads', express.static(UPLOADS_DIR));

@@ -4,13 +4,15 @@
 // Example:
 // const BACKEND_URL = 'https://je-backend.onrender.com';
 // If left empty the frontend will POST to a relative `/contact` path.
-const BACKEND_URL = 'https://je-automoveis.onrender.com';
+const BACKEND_URL = '';
 const BACKEND_BASE_URL = String(BACKEND_URL || '').trim().replace(/\/+$/, '');
 let STORE_WHATSAPP_NUMBER = '5500000000000';
 let STORE_BADGE_COLOR = '#d32f2f';
 let CURRENT_STORE_NAME = 'Loja';
 const PATH_PARTS = window.location.pathname.split('/').filter(Boolean);
 const STORE_SLUG = PATH_PARTS[0] === 'loja' ? PATH_PARTS[1] : '';
+const INITIAL_STORE_NAME = String(document.querySelector('.brand span')?.textContent || '').trim();
+if (INITIAL_STORE_NAME) CURRENT_STORE_NAME = INITIAL_STORE_NAME;
 
 const fallbackVehicles = [
   {
@@ -65,7 +67,7 @@ const fallbackSellers = [
 
 const fallbackBanners = [
   {
-    title: 'Novidades da semana na JE Automóveis',
+    title: 'Novidades da semana na loja',
     subtitle: 'Confira ofertas especiais e veículos recém-chegados na garagem.',
     ctaText: 'Ver estoque',
     ctaLink: '#estoque',
@@ -133,7 +135,7 @@ function renderBrandBadge() {
 }
 
 const fallbackSiteSettings = {
-  aboutTitle: 'Sobre a JE Automóveis',
+  aboutTitle: 'Sobre a loja',
   aboutText: 'Atendimento familiar com foco em transparência para venda, troca e consignado de veículos.',
   aboutHighlights: [
     'Venda de veículos selecionados',
@@ -157,11 +159,12 @@ function formatPrice(price) {
 }
 
 function createFallbackImage(title) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1f1f1f"/><stop offset="100%" stop-color="#3c3c3c"/></linearGradient></defs><rect width="960" height="540" fill="url(#g)"/><text x="50%" y="44%" text-anchor="middle" fill="#ffffff" font-size="44" font-family="Arial">JE Automóveis</text><text x="50%" y="56%" text-anchor="middle" fill="#dddddd" font-size="28" font-family="Arial">${title}</text></svg>`;
+  const safeStoreName = String(CURRENT_STORE_NAME || 'Loja').trim() || 'Loja';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1f1f1f"/><stop offset="100%" stop-color="#3c3c3c"/></linearGradient></defs><rect width="960" height="540" fill="url(#g)"/><text x="50%" y="44%" text-anchor="middle" fill="#ffffff" font-size="44" font-family="Arial">${safeStoreName}</text><text x="50%" y="56%" text-anchor="middle" fill="#dddddd" font-size="28" font-family="Arial">${title}</text></svg>`;
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 
-function toAbsoluteImage(pathValue, fallbackTitle = 'JE Automóveis') {
+function toAbsoluteImage(pathValue, fallbackTitle = CURRENT_STORE_NAME || 'Loja') {
   if (!pathValue) return createFallbackImage(fallbackTitle);
   if (pathValue.startsWith('http://') || pathValue.startsWith('https://') || pathValue.startsWith('data:')) return pathValue;
   if (pathValue.startsWith('/')) {
@@ -357,7 +360,7 @@ function renderSellers(sellers) {
 
   grid.innerHTML = sellers.map((seller) => {
     const sellerPhone = (seller.whatsapp || STORE_WHATSAPP_NUMBER).replace(/\D/g, '');
-    const text = encodeURIComponent(`Olá ${seller.name}, vi seu contato no site da JE Automóveis e quero mais informações.`);
+    const text = encodeURIComponent(`Olá ${seller.name}, vi seu contato no site da ${CURRENT_STORE_NAME} e quero mais informações.`);
     const link = `https://wa.me/${sellerPhone}?text=${text}`;
     const fallback = createFallbackImage(seller.name || 'Vendedor');
     return `
@@ -436,7 +439,7 @@ function renderBanners(banners) {
   currentBannerIndex = 0;
 
   slidesWrap.innerHTML = ordered.map((banner, idx) => {
-    const fallback = createFallbackImage(banner.title || 'Oferta JE Automóveis');
+    const fallback = createFallbackImage(banner.title || 'Oferta da loja');
     const image = toAbsoluteImage(banner.image, banner.title || 'Banner');
     const ctaText = banner.ctaText || 'Saiba mais';
     const ctaLink = banner.ctaLink || '#estoque';
